@@ -1,0 +1,151 @@
+# LeadFlow CRM — Technical Architecture
+
+## 1. Shape of the system
+
+A Laravel 13 modular monolith on PHP 8.3+/8.4 and MySQL 8.4. Blade renders page shells; each page is driven by a jQuery module that talks to a versioned JSON API (`/api/v1`) using the same session cookie, so CSRF protection, session rotation and server-side authorization apply to every call. There is no SPA build step: Bootstrap 5.3, Bootstrap Icons, jQuery 4, Chart.js 4 and SortableJS are vendored under `public/vendor`, and the Content Security Policy is `'self'`-only (no inline script or style).
+
+```
+Browser (Blade shell + jQuery page module)
+   │  session cookie + X-CSRF-TOKEN
+   ▼
+routes/api.php  /api/v1/*   ── middleware: web → auth → org.resolve → (permission:*)
+   │
+Controllers (thin)  →  FormRequests (validation)  →  Services (domain logic, transactions)
+   │                                                     │
+   ├── Policies / LeadVisibility (record-level scope)    ├── ActivityLogger, AuditLogger
+   └── Resources (JSON shaping, PII discipline)          └── PhoneNormalizer, DuplicateDetector
+   ▼
+Eloquent models with BelongsToOrganization global scope  →  MySQL 8.4
+   ▲
+Queue workers / scheduler (imports, reminders, webhooks in later phases)
+   ▲
+Integration adapters (Phase 4): WhatsAppCloudAdapter, MetaMarketingAdapter — each reports an honest
+connection state; nothing is marked "connected" without a successful authenticated call.
+```
+
+### Decisions taken up front
+
+1. **Useful without APIs.** Manual entry, CSV/XLSX import, call logging, follow-ups, pipeline, dashboards and manual spend entry work on day one. Integrations are additive adapters.
+2. **Ad activity ≠ people.** `campaign_events` stores anonymous/aggregate activity (CTWA clicks, conversation starts) with no contact FK. A `contact` only exists when a human-supplied identifier arrives (form, inbound message, import, manual entry).
+3. **Multi-tenant from row one.** Every tenant table carries `organization_id`; `OrganizationScope` filters every query and `BelongsToOrganization` stamps inserts from the authenticated user's org. The client never supplies an organization id.
+4. **Facts over labels.** Metrics derive from lifecycle timestamps on the lead (`first_contacted_at`, `first_responded_at`, `qualified_at`, `converted_at`, `closed_at`) plus semantic flags on statuses, so renaming or reordering pipeline stages never breaks reporting.
+5. **Contacts vs leads.** One `contact` (a person/business with normalized identifiers) has many `leads` (inquiries/opportunities). Exact normalized phone/email/provider-id matches link a new inquiry to the existing contact; anything weaker is only ever a suggestion. Merges are explicit, permissioned, audited.
+
+## 2. Tenancy & authorization
+
+* `ResolveOrganization` middleware binds `CurrentOrganization` from `auth()->user()->organization_id`.
+* RBAC: `roles` (per organization, seeded from templates) ↔ `permissions` (global keys) via `role_permissions`; users ↔ roles via `user_roles`. `Gate::before` maps permission keys; routes use `can:` middleware; services re-check.
+* Record visibility (`LeadVisibility`): `leads.view_all` → whole org; `leads.view_team` → leads assigned to members of teams the user manages (plus own); `leads.view_own` → assigned to self. Applied to lists, detail, pipeline, follow-ups, dashboard and exports — the same scope everywhere, so a rep's dashboard is their own book.
+
+| Role | Key permissions |
+|---|---|
+| Super Administrator | all |
+| Business Administrator | all within the organization |
+| Sales Manager | team leads, assign, bulk update, follow-ups (all visible), merge, reports, imports |
+| Sales Representative | own leads, create/update, log calls, own follow-ups, consent capture |
+| Marketing Manager | all leads read, campaigns + spend, reports, exports, imports, audiences |
+| Read-Only Analyst | dashboard, reports, campaigns (aggregates only, no lead PII) |
+
+## 3. Data model (relationship plan)
+
+```
+organizations 1─* users *─* roles *─* permissions
+organizations 1─* teams 1─* users (team_id); teams.manager_user_id → users
+organizations 1─* contacts 1─* contact_identities (provider, external_id)   ← dedupe keys
+contacts 1─* leads *─1 lead_statuses / lead_sources / users(assigned)
+leads 1─* lead_attributions (first/last touch; external ids + name snapshots) *─0..1 campaigns/ad_sets/ads
+campaigns 1─* ad_sets 1─* ads ;  campaigns 1─* campaign_spend (daily, currency, source)
+campaigns 1─* campaign_events (anonymous/aggregate, no contact FK)
+leads 1─* lead_status_history, lead_assignments, activities (timeline), call_tasks, appointments
+leads *─* tags (lead_tag_assignments)
+contacts 1─* consent_records (append-only), suppression_records
+organizations 1─* call_outcomes (configurable, drive counters/status advancement)
+organizations 1─* import_jobs 1─* import_rows (staged, per-row action + messages)
+users 1─* saved_views ; organizations 1─* organization_settings ; audit_logs (append-only)
+Phase 3+: notifications, automation_rules, automation_executions
+Phase 4+: integrations (encrypted credentials), webhook_events (unique provider event id), conversations, messages, message_templates
+Phase 5+: audience_segments, audience_segment_memberships, audience_sync_jobs
+```
+
+Deviations from the suggested table list, with reasons:
+* `campaign_external_ids` → explicit `campaigns`, `ad_sets`, `ads` tables, each with `(organization_id, platform, external_id)` unique keys. Attribution rows keep both the FK and the external id + display-name snapshot, so renames never rewrite history.
+* `import_errors` → `import_rows` holds every staged row with its planned action (`create|update|new_lead|skip|review|error`) and messages; the error report is `action = error`. This also powers the dry-run preview and resumable batches.
+* `application_settings` → `organization_settings` (key/JSON value per organization).
+* `lead_tags` + `lead_tag_assignments` → `tags` + `lead_tag_assignments` (one pivot).
+
+Conventions: UTC timestamps; display in organization/user time zone. Money is `DECIMAL(14,2)` + `CHAR(3)` currency. Phone numbers keep `*_raw` alongside `*_e164`. Soft deletes only on contacts/leads (archival); suppression and legal deletion are separate procedures.
+
+## 4. Navigation map
+
+| # | Item | Phase | Permission |
+|---|---|---|---|
+| 1 | Dashboard | 2 | dashboard.view |
+| 2 | Leads (list, filters, saved views, bulk, detail) | 2 | leads.view_* |
+| 3 | Contacts (dedupe, merge, consent) | 2 | contacts.view |
+| 4 | Sales Pipeline (Kanban) | 2 | leads.view_* |
+| 5 | WhatsApp Inbox | 4 | whatsapp.view |
+| 6 | Calls & Follow-ups | 2 | followups.manage_own/all |
+| 7 | Calendar & Appointments | 2 | followups.manage_own/all |
+| 8 | Campaigns (+ manual spend) | 2 (API sync 4) | campaigns.view |
+| 9 | Audience Segments | 5 | audiences.manage |
+| 10 | Retargeting | 5 | audiences.manage |
+| 11 | Reports & Analytics | 5 | reports.view |
+| 12 | Team & Assignments | 2 | users.manage |
+| 13 | Import / Export | 2 | imports.run / leads.export |
+| 14 | Integrations | status 2, adapters 4 | integrations.manage |
+| 15 | Automation Rules | 3 | automation.manage |
+| 16 | Audit Logs | 2 | audit.view |
+| 17 | Settings (org, statuses, sources, outcomes, roles) | 2 | settings.manage |
+
+Modules from later phases appear in navigation with an explicit "planned for Phase N" state — never with sample data.
+
+## 5. Phased checklist
+
+- [x] **Phase 1 — Foundation:** project skeleton, migrations, Argon2id auth with throttling + session rotation, RBAC, org isolation, security headers/CSP, layout + reusable UI components.
+- [x] **Phase 2 — Core CRM** (37 automated tests passing; browser-verified): dashboard (real data, honest ad-metric states), contacts + leads, search/filters/saved views/column chooser, bulk actions, lead detail + timeline, Kanban + status rules, calls/follow-ups/appointments, CSV/XLSX import wizard with dry run + error report, safe exports, campaigns + manual spend, team/users, settings, audit log.
+- [ ] **Phase 3 — Automation:** scheduler, in-app/email notifications, assignment rules (round-robin/territory), SLA reminders, escalation, lead scoring with explainable factors, rule engine with loop guard.
+- [ ] **Phase 4 — Integrations:** WhatsApp Cloud API (verify token + `X-Hub-Signature-256`, idempotent webhook ingestion, referral attribution, templates, 24h window), Meta Marketing API (campaign/adset/ad sync, insights spend), Lead Ads retrieval, integration monitoring.
+- [ ] **Phase 5 — Marketing intelligence:** dynamic segments (AND/OR), eligibility + suppression, hashed customer-list sync, reports module.
+- [ ] **Phase 6 — Production readiness:** security review, load/perf indexes review, error monitoring, backup drills, API tokens for external clients.
+
+## 6. ER diagram (Phases 1–2)
+
+```mermaid
+erDiagram
+    organizations ||--o{ users : has
+    organizations ||--o{ teams : has
+    teams ||--o{ users : members
+    users }o--o{ roles : user_roles
+    roles }o--o{ permissions : role_permissions
+    organizations ||--o{ contacts : owns
+    contacts ||--o{ contact_identities : "external ids"
+    contacts ||--o{ leads : "has inquiries"
+    contacts ||--o{ consent_records : ledger
+    contacts ||--o{ suppression_records : suppressions
+    contacts |o--o| contacts : merged_into
+    leads }o--|| lead_statuses : stage
+    leads }o--o| lead_sources : source
+    leads }o--o| users : assigned
+    leads ||--o{ lead_attributions : "first/last touch"
+    lead_attributions }o--o| campaigns : campaign
+    lead_attributions }o--o| ad_sets : ad_set
+    lead_attributions }o--o| ads : ad
+    campaigns ||--o{ ad_sets : has
+    ad_sets ||--o{ ads : has
+    campaigns ||--o{ campaign_spend : "daily spend"
+    campaigns ||--o{ campaign_events : "anonymous activity"
+    leads ||--o{ lead_status_history : history
+    leads ||--o{ lead_assignments : history
+    leads ||--o{ activities : timeline
+    leads ||--o{ call_tasks : "calls & follow-ups"
+    call_tasks }o--o| call_outcomes : outcome
+    leads ||--o{ appointments : has
+    leads }o--o{ tags : lead_tag_assignments
+    organizations ||--o{ import_jobs : imports
+    import_jobs ||--o{ import_rows : "staged rows"
+    users ||--o{ saved_views : owns
+    organizations ||--o{ audit_logs : audit
+    organizations ||--o{ organization_settings : settings
+```
+
+Key indexes: `(organization_id, phone_e164)`, `(organization_id, whatsapp_e164)`, `(organization_id, email_normalized)` on contacts; `(organization_id, lead_status_id | assigned_user_id | created_at | next_follow_up_at | lead_source_id | contact_id)` on leads; `(organization_id, status, scheduled_at)` on call_tasks; unique `(organization_id, external_lead_id)` on leads and `(organization_id, provider, external_id)` on contact_identities for idempotent ingestion.
