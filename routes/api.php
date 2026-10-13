@@ -86,3 +86,54 @@ Route::patch('settings/outcomes/{outcome}', [V1\SettingsController::class, 'upda
 
 Route::get('audit-logs', V1\AuditLogController::class);
 Route::get('integrations/status', [V1\IntegrationController::class, 'status']);
+
+// ----- WhatsApp conversations -----
+Route::get('conversations', [V1\ConversationController::class, 'index']);
+Route::get('conversations/{conversation}', [V1\ConversationController::class, 'show']);
+Route::get('conversations/{conversation}/poll', [V1\ConversationController::class, 'poll']);
+Route::patch('conversations/{conversation}', [V1\ConversationController::class, 'update']);
+Route::post('conversations/{conversation}/messages', [V1\ConversationController::class, 'send'])->middleware('throttle:messaging');
+Route::post('conversations/{conversation}/suggest', [V1\ConversationController::class, 'suggest'])->middleware('throttle:ai');
+Route::post('conversations/{conversation}/read', [V1\ConversationController::class, 'markRead']);
+Route::post('ai-interactions/{interaction}/feedback', [V1\ConversationController::class, 'feedback']);
+
+// ----- AI assistant & knowledge base -----
+Route::get('ai/assistant', [V1\AiAssistantController::class, 'show']);
+Route::put('ai/assistant', [V1\AiAssistantController::class, 'update']);
+Route::post('ai/assistant/preset', [V1\AiAssistantController::class, 'preset']);
+Route::get('ai/models', [V1\AiAssistantController::class, 'models']);
+Route::post('ai/playground', [V1\AiAssistantController::class, 'playground'])->middleware('throttle:ai');
+Route::get('ai/learning', [V1\AiAssistantController::class, 'learning']);
+Route::post('ai/learning/{interaction}/dismiss', [V1\AiAssistantController::class, 'dismissLearning']);
+Route::post('ai/rules', [V1\AiAssistantController::class, 'storeRule']);
+Route::patch('ai/rules/{rule}', [V1\AiAssistantController::class, 'updateRule']);
+Route::delete('ai/rules/{rule}', [V1\AiAssistantController::class, 'destroyRule']);
+Route::get('kb/documents', [V1\KnowledgeBaseController::class, 'index']);
+Route::post('kb/documents', [V1\KnowledgeBaseController::class, 'store'])->middleware('throttle:sensitive');
+Route::get('kb/documents/{document}', [V1\KnowledgeBaseController::class, 'show']);
+Route::patch('kb/documents/{document}', [V1\KnowledgeBaseController::class, 'update']);
+Route::post('kb/documents/{document}/reindex', [V1\KnowledgeBaseController::class, 'reindex']);
+Route::delete('kb/documents/{document}', [V1\KnowledgeBaseController::class, 'destroy']);
+Route::get('kb/search', [V1\KnowledgeBaseController::class, 'search']);
+
+// ----- integrations (replaces the status-only endpoint) -----
+Route::put('integrations/{provider}', [V1\IntegrationController::class, 'update'])->middleware('throttle:sensitive');
+Route::post('integrations/{provider}/test', [V1\IntegrationController::class, 'test'])->middleware('throttle:sensitive');
+Route::post('integrations/{provider}/rotate-webhook', [V1\IntegrationController::class, 'rotateWebhook'])->middleware('throttle:sensitive');
+Route::post('integrations/whatsapp_cloud/verify-token', [V1\IntegrationController::class, 'revealVerifyToken'])->middleware('throttle:sensitive');
+Route::post('integrations/whatsapp_cloud/templates/sync', [V1\IntegrationController::class, 'syncTemplates'])->middleware('throttle:sensitive');
+Route::get('whatsapp/templates', [V1\IntegrationController::class, 'templates']);
+
+// ----- analytics, notifications, profile, business settings, platform admin -----
+Route::get('analytics', [V1\AnalyticsController::class, 'index']);
+Route::get('analytics/export', [V1\AnalyticsController::class, 'export'])->middleware('throttle:sensitive');
+Route::get('notifications', [V1\NotificationController::class, 'index']);
+Route::post('notifications/read', [V1\NotificationController::class, 'read']);
+Route::get('profile', [V1\ProfileController::class, 'show']);
+Route::patch('profile', [V1\ProfileController::class, 'update']);
+Route::post('profile/password', [V1\ProfileController::class, 'password'])->middleware('throttle:sensitive');
+Route::patch('settings/business', [V1\SettingsController::class, 'updateBusiness']);
+Route::post('settings/logo', [V1\SettingsController::class, 'uploadLogo'])->middleware('throttle:sensitive');
+Route::get('platform', [V1\PlatformAdminController::class, 'index']);
+Route::post('platform/organizations', [V1\PlatformAdminController::class, 'store'])->middleware('throttle:sensitive');
+Route::patch('platform/organizations/{organization}', [V1\PlatformAdminController::class, 'update'])->middleware('throttle:sensitive');

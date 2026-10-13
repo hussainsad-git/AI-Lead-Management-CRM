@@ -29,7 +29,7 @@ class AttributionService
 
         $completeness = match (true) {
             $campaign && $adSet && $ad => 'complete',
-            (bool) $campaign => 'partial',
+            (bool) $campaign, ! empty($data['external_ad_id']) => 'partial',
             default => 'unknown',
         };
 
@@ -78,6 +78,13 @@ class AttributionService
                     'currency' => app(\App\Support\Tenancy\CurrentOrganization::class)->require()->currency,
                     'data_source' => 'import',
                 ]);
+            }
+        }
+        if (! $campaign && ! empty($d['external_ad_id'])) {
+            // Click-to-WhatsApp referrals carry only the ad id; link it if campaigns were synced/entered with ids.
+            $ad = Ad::where('external_id', $d['external_ad_id'])->first();
+            if ($ad) {
+                return [$ad->campaign, $ad->adSet, $ad];
             }
         }
         if (! $campaign) {

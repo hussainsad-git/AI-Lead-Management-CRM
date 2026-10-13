@@ -41,6 +41,7 @@ class InstallCommand extends Command
         app(\App\Support\Tenancy\CurrentOrganization::class)->runAs($organization, function () use ($organization, $name, $email, $password) {
             $user = new User(['name' => $name, 'email' => $email, 'password' => $password]);
             $user->organization_id = $organization->id;
+            $user->is_platform_admin = ! User::where('is_platform_admin', true)->exists(); // first installer operates the platform
             $user->save();
             $user->roles()->sync([Role::where('key', 'super_admin')->value('id')]);
         });

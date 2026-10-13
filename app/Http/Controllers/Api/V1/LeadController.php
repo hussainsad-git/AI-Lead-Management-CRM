@@ -68,6 +68,7 @@ class LeadController extends ApiController
             'consent_records' => $lead->contact->consents()->limit(20)->get(['channel', 'status', 'source', 'evidence', 'recorded_at']),
             'other_leads' => $visibleOther->map(fn ($l) => ['id' => $l->id, 'status' => $l->status->name, 'created_at' => $l->created_at->toIso8601ZuluString()])->values(),
             'hidden_other_leads' => $other->count() - $visibleOther->count(),
+            'conversation_id' => $this->user()->hasPermission('whatsapp.view') ? \App\Models\Conversation::where('contact_id', $lead->contact_id)->value('id') : null,
             'call_tasks' => CallTaskResource::collection($lead->callTasks()->with(['outcome', 'assignee'])->latest('scheduled_at')->limit(50)->get()),
             'appointments' => AppointmentResource::collection($lead->appointments()->with('assignee')->latest('starts_at')->get()),
             'status_history' => $lead->statusHistory()->with(['fromStatus:id,name', 'toStatus:id,name', 'user:id,name'])->latest('id')->limit(50)->get()

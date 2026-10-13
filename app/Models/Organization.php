@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
-    protected $fillable = ['name', 'slug', 'timezone', 'currency', 'default_country', 'is_active'];
+    protected $fillable = ['name', 'slug', 'industry', 'logo_path', 'brand_color', 'timezone', 'currency', 'default_country', 'default_locale', 'is_active'];
 
     protected function casts(): array
     {

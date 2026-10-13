@@ -46,3 +46,21 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Rename/reorder/add stages; default stage must be open; stage with leads cannot be disabled.
 - [ ] Outcome "nobody answered" cannot be set to move leads to Not interested.
 - [ ] Role permission change takes effect immediately and is audited.
+
+**WhatsApp & AI** (needs a test WABA number, or use the demo seed for UI-only checks)
+- [ ] Integrations: save WhatsApp credentials → webhook URL + verify token appear; Meta's "Verify and save" succeeds; Test connection shows the number.
+- [ ] Send a WhatsApp message from a phone → conversation, contact and lead appear within seconds; owner gets a notification once.
+- [ ] Message from a click-to-WhatsApp ad → lead source Facebook/Instagram Ads, attribution shows ad id/headline.
+- [ ] Reply from the inbox → tick goes clock → ✓ → ✓✓ → blue ✓✓ as Meta reports; failure shows the reason.
+- [ ] After 24 h without a customer message, free text is blocked and templates are offered.
+- [ ] Customer sends "STOP" → opted out, no further sends possible.
+- [ ] Suggest mode: "AI draft" produces a grounded answer with sources; editing then sending puts it in the learning queue.
+- [ ] Auto mode: a question covered by the knowledge base gets an AI reply; an uncovered one gets the handoff message and appears under "Needs human".
+- [ ] Off-topic request ("write my essay") is declined.
+- [ ] Urdu, Roman Urdu and Arabic questions are answered in the same language.
+- [ ] Approve an answer in the learning queue → Knowledge Base shows a *Learned* entry → same question is now answered.
+- [ ] Knowledge Base: upload PDF/DOCX; "Test retrieval" finds the right passage; disabling a document removes it from answers.
+- [ ] Lead detail shows score, factors and AI summary; AI never overwrote a field already filled.
+- [ ] Analytics: numbers match the inbox for the same range; CSV exports open in Excel.
+- [ ] Profile → language اردو / العربية switches the interface to RTL.
+- [ ] Platform Admin: create a business, sign in as its admin, confirm none of the first business's data is visible.

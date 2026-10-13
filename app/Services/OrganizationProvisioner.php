@@ -58,6 +58,8 @@ class OrganizationProvisioner
                 LeadSource::firstOrCreate(['key' => $key], ['name' => $name, 'platform' => $platform, 'is_paid' => $paid, 'sort_order' => $i++]);
             }
 
+            app(\App\Services\Ai\AssistantConfig::class)->get();
+
             $i = 0;
             foreach (config('leadflow.call_outcomes') as $key => [$name, $connected, $callback, $advance]) {
                 CallOutcome::firstOrCreate(['key' => $key], [

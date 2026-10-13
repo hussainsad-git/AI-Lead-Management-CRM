@@ -3,7 +3,8 @@
 @section('content')
 <div class="lf-page-head"><h1>Settings</h1></div>
 <ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item settings-only"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#s-org" role="tab">Organization</button></li>
+    <li class="nav-item settings-only"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#s-org" role="tab">{{ __('Organization') }}</button></li>
+    <li class="nav-item settings-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-biz" role="tab">{{ __('Business & automation') }}</button></li>
     <li class="nav-item settings-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-pipeline" role="tab">Pipeline stages</button></li>
     <li class="nav-item settings-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-sources" role="tab">Lead sources</button></li>
     <li class="nav-item settings-only"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-outcomes" role="tab">Call outcomes</button></li>
@@ -22,6 +23,21 @@
         </div>
         <div class="mt-3"><button class="btn btn-primary" type="submit">Save organization settings</button></div>
     </form></div></div>
+
+    <div class="tab-pane fade settings-only" id="s-biz" role="tabpanel"><form class="card" id="bizForm" novalidate><div class="card-body"><div class="row g-3">
+        <div class="col-md-4"><label class="form-label" for="b-ind">{{ __('Industry') }}</label><select class="form-select" id="b-ind" name="industry"></select><div class="form-text">{{ __('Used for AI assistant presets.') }}</div></div>
+        <div class="col-md-4"><label class="form-label" for="b-locale">{{ __('Default interface language') }}</label><select class="form-select" id="b-locale" name="default_locale"></select></div>
+        <div class="col-md-4"><label class="form-label" for="b-color">{{ __('Brand colour') }}</label><div class="input-group"><input class="form-control form-control-color" type="color" id="b-color" name="brand_color" value="#2563eb"><button class="btn btn-light" type="button" id="b-color-reset">{{ __('Default') }}</button></div></div>
+        <div class="col-md-6"><label class="form-label" for="b-logo">{{ __('Logo') }}</label><input class="form-control" type="file" id="b-logo" accept="image/png,image/jpeg,image/webp"><div class="form-text">{{ __('PNG, JPG or WebP, max 1 MB. Shown in the sidebar.') }}</div></div>
+        <div class="col-md-6"><div class="form-label">{{ __('Business hours') }}</div><div class="hours-grid" id="b-hours"></div><div class="form-text">{{ __('Used for after-hours auto-replies and AI scheduling, in the organization time zone.') }}</div></div>
+        <div class="col-12"><hr class="my-1"><div class="small-caps mb-2">{{ __('Automatic assignment of new WhatsApp leads') }}</div>
+            <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="aa-on"><label class="form-check-label" for="aa-on">{{ __('Round-robin new leads to available salespeople') }}</label></div>
+            <div class="row g-2"><div class="col-md-4"><label class="form-label small" for="aa-team">{{ __('Only this team') }}</label><select class="form-select form-select-sm" id="aa-team"></select></div>
+            <div class="col-md-8"><div class="form-label small">{{ __('Or only these people') }}</div><div class="kv-chips" id="aa-users"></div></div></div>
+            <div class="form-text">{{ __('Default pool: active Sales Representatives who accept assignments.') }}</div></div>
+        <div class="col-12"><hr class="my-1"><div class="small-caps mb-2">{{ __('Lead scoring weights') }}</div><div class="row g-2" id="b-weights"></div>
+            <div class="form-text">{{ __('Score = 20 + sum of matching factors (0–100). Hot ≥ 60, Warm ≥ 30. Only behaviour and stated needs are used.') }}</div></div>
+    </div></div><div class="card-footer bg-white text-end"><button class="btn btn-primary" type="submit">{{ __('Save business settings') }}</button></div></form></div>
 
     <div class="tab-pane fade settings-only" id="s-pipeline" role="tabpanel"><div class="card">
         <div class="card-header d-flex align-items-center">Stages<button class="btn btn-sm btn-primary ms-auto" id="addStatus"><i class="bi bi-plus-lg"></i> Add stage</button></div>

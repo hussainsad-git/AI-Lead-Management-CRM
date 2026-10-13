@@ -12,3 +12,9 @@
 10. **Campaign ↔ lead attribution** for manual entry is first-touch = last-touch at creation; later touches (Phase 4 webhooks) update last-touch only. Imports may create missing campaigns by name (marked `data_source=import`).
 11. **Archiving ≠ deletion.** Legal erasure/retention jobs are a Phase 6 item; suppression records survive contact merges.
 12. **Default locale/currency/time zone**: PKR, Asia/Karachi, PK numbering — all per-organization settings.
+13. **AI "training" is retrieval, not fine-tuning.** The knowledge base is retrieved per question; "continuous learning" means human-approved answers are added to the knowledge base. Fine-tuning would be slower to update, costlier, and still hallucinate prices.
+14. **Default AI mode is "suggest".** Auto-sending is opt-in per business, defaults to knowledge-base-only, and is capped per conversation.
+15. **OpenAI model is not hard-coded.** Model IDs change frequently; the assistant reads the live list from the account. DeepSeek defaults to `deepseek-v4-flash` (current as of Oct 2026).
+16. **WhatsApp profile name** is used as the contact name only when the contact has no name; it is user-supplied display text, not verified identity.
+17. **Interface translation** covers navigation, layout and the AI/WhatsApp/KB/analytics/profile/admin screens in Urdu and Arabic with RTL. Older CRM screens (lead table, imports, pipeline) still show English labels inside RTL layout; their strings can be added to `lang/*.json` and `public/js/i18n/*.js`.
+18. **Vector search** runs in PHP over stored float32 vectors; suitable up to ~8k chunks per business before moving to a vector database.

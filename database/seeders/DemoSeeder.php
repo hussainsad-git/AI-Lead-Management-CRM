@@ -24,6 +24,49 @@ use RuntimeException;
  */
 class DemoSeeder extends Seeder
 {
+    /** Synthetic WhatsApp history + knowledge base so the inbox, AI and analytics screens can be reviewed without Meta credentials. */
+    private function demoConversations($org, $admin, array $reps): void
+    {
+        $kb = app(\App\Services\Ai\KnowledgeBase::class);
+        $kb->addText('DEMO Price list – Phase 9', "5 marla plot: PKR 45 lakh, 20% down payment, 3-year quarterly installments.\n\n10 marla plot: PKR 85 lakh, 25% down payment, 3-year installments.\n\nPossession: within 18 months of booking.");
+        $kb->addText('DEMO Office & visits', "Site office: Blue Area, Islamabad. Open Monday–Saturday 10am to 6pm.\n\nFree site visits daily at 11am and 4pm; book via WhatsApp.");
+        $kb->addText('FAQ: Do you accept overseas Pakistanis?', "Q: Do you accept overseas Pakistanis?\nA: Yes. Overseas clients can book online and pay via bank transfer; documents are couriered.", 'faq');
+        \App\Models\AutoReplyRule::create(['name' => 'Welcome (demo)', 'trigger' => 'first_message', 'response' => 'Assalam-o-Alaikum {name}! Thanks for contacting {business}. A property advisor will help you shortly.', 'priority' => 10]);
+        \App\Models\AutoReplyRule::create(['name' => 'After hours (demo)', 'trigger' => 'outside_hours', 'response' => 'Thanks for your message! Our office is closed now; we will reply at 10am.', 'priority' => 20]);
+
+        $script = [
+            ['Ayesha (demo)', '923211110001', [['in', 'contact', 'Assalam o alaikum, 5 marla plot ki qeemat kya hai?'], ['out', 'auto_reply', 'Assalam-o-Alaikum Ayesha! Thanks for contacting Demo Realty (synthetic data). A property advisor will help you shortly.'],
+                ['out', 'ai', 'Wa alaikum assalam! 5 marla plot PKR 45 lakh ka hai, 20% down payment aur 3 saal ki qiston ke sath. Kya aap site visit karna chahengi?'], ['in', 'contact', 'Ji, Saturday 11 baje theek hai'], ['out', 'user', 'Great, Saturday 11am confirmed. Our advisor Ali will call you.']], null, $reps[0]],
+            ['Usman (demo)', '923211110002', [['in', 'contact', 'Do you accept overseas Pakistanis? I am in Dubai'], ['out', 'ai', 'Yes! Overseas clients can book online and pay by bank transfer; documents are couriered to you. Which plot size are you interested in?'], ['in', 'contact', '10 marla, budget around 90 lakh']], null, $reps[1]],
+            ['Sara (demo)', '923211110003', [['in', 'contact', 'Is there a mosque and school inside the society?'], ['out', 'system', 'Thank you! A member of our team will reply to you shortly.']], 'Not in knowledge base: amenities', null],
+        ];
+        $i = 0;
+        foreach ($script as [$name, $wa, $msgs, $handoff, $rep]) {
+            $contact = \App\Models\Contact::create(['name' => $name, 'whatsapp_raw' => '+'.$wa, 'whatsapp_e164' => '+'.$wa, 'country_code' => 'PK', 'preferred_contact_method' => 'whatsapp']);
+            $lead = app(\App\Services\LeadService::class)->create(['contact_id' => $contact->id, 'lead_source_id' => \App\Models\LeadSource::where('key', 'facebook_ads')->value('id'),
+                'assigned_user_id' => $rep?->id, 'source_notes' => 'Click-to-WhatsApp ad (demo)', 'tags' => ['Demo data'], 'allow_duplicate_open_lead' => true], $admin, 'whatsapp');
+            $start = now()->subHours(20 - $i * 6);
+            $conv = \App\Models\Conversation::create(['contact_id' => $contact->id, 'lead_id' => $lead->id, 'external_id' => $wa, 'assigned_user_id' => $rep?->id,
+                'handoff_at' => $handoff ? $start->copy()->addMinute() : null, 'handoff_reason' => $handoff, 'status' => $handoff ? 'pending' : 'open', 'language' => $i === 0 ? 'roman_ur' : 'en']);
+            $t = $start->copy();
+            foreach ($msgs as $k => [$dir, $who, $body]) {
+                $inter = $who === 'ai' ? \App\Models\AiInteraction::create(['conversation_id' => $conv->id, 'lead_id' => $lead->id, 'kind' => 'reply', 'provider' => 'openai', 'model' => 'demo', 'status' => 'ok', 'outcome' => 'answered', 'input' => $msgs[$k - 1][2] ?? null, 'response' => $body, 'latency_ms' => 1400]) : null;
+                \App\Models\Message::create(['conversation_id' => $conv->id, 'direction' => $dir, 'sender_type' => $who, 'user_id' => $who === 'user' ? $rep?->id : null,
+                    'ai_interaction_id' => $inter?->id, 'type' => 'text', 'body' => $body, 'status' => $dir === 'in' ? 'received' : 'read', 'occurred_at' => $t->copy(), 'provider_message_id' => 'demo.'.$wa.'.'.$k]);
+                $t->addMinutes(2);
+            }
+            if ($handoff) {
+                \App\Models\AiInteraction::create(['conversation_id' => $conv->id, 'lead_id' => $lead->id, 'kind' => 'reply', 'provider' => 'openai', 'model' => 'demo', 'status' => 'ok', 'outcome' => 'handoff', 'input' => $msgs[0][2], 'response' => 'A team member will confirm.']);
+            }
+            $conv->update(['last_inbound_at' => $start->copy()->addMinutes(2 * collect($msgs)->keys()->filter(fn ($k) => $msgs[$k][0] === 'in')->last()), 'last_message_at' => $t->copy()->subMinutes(2),
+                'last_message_preview' => mb_substr(end($msgs)[2], 0, 160), 'first_response_at' => $start->copy()->addMinutes(2), 'unread_count' => end($msgs)[0] === 'in' ? 1 : 0]);
+            $conv->forceFill(['created_at' => $start])->save();
+            $i++;
+        }
+        $lead = \App\Models\Lead::whereHas('contact', fn ($q) => $q->where('name', 'Usman (demo)'))->first();
+        $lead?->update(['product_interest' => '10 marla plot', 'budget_amount' => 9000000, 'budget_currency' => 'PKR', 'ai_summary' => 'Overseas buyer in Dubai interested in a 10 marla plot, budget about PKR 90 lakh.']);
+    }
+
     public function run(OrganizationProvisioner $provisioner, CurrentOrganization $current): void
     {
         if (app()->environment('production')) {
@@ -43,6 +86,9 @@ class DemoSeeder extends Seeder
             return $u;
         };
         $admin = $mk('Admin User', 'admin@demo.test', 'business_admin');
+        $admin->forceFill(['is_platform_admin' => true])->save();
+        $org->update(['industry' => 'real_estate']);
+        app(\App\Services\Ai\AssistantConfig::class)->applyPreset(app(\App\Services\Ai\AssistantConfig::class)->get(), 'real_estate');
         $manager = $mk('Sana Manager', 'manager@demo.test', 'sales_manager', $team->id);
         $team->update(['manager_user_id' => $manager->id]);
         $reps = [$mk('Ali Rep', 'rep1@demo.test', 'sales_rep', $team->id), $mk('Hina Rep', 'rep2@demo.test', 'sales_rep', $team->id)];
@@ -102,6 +148,11 @@ class DemoSeeder extends Seeder
                 $followUps->schedule($lead->fresh(['status', 'contact']), ['scheduled_at' => now()->addHours(mt_rand(1, 72)), 'purpose' => 'Send price list']);
             }
             Auth::setUser($admin);
+        }
+
+        $this->demoConversations($org, $admin, $reps);
+        foreach (\App\Models\Lead::with('status', 'contact')->get() as $l) {
+            app(\App\Services\LeadScoring::class)->score($l);
         }
 
         $this->command?->info('Demo organization created. Sign in with admin@demo.test / Password123! (also manager@, rep1@, rep2@, marketing@, analyst@).');

@@ -19,7 +19,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'phone', 'password', 'is_active', 'accepts_assignments', 'timezone', 'team_id'];
+    protected $fillable = ['name', 'email', 'phone', 'password', 'is_active', 'accepts_assignments', 'timezone', 'locale', 'team_id'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -33,6 +33,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'accepts_assignments' => 'boolean',
+            'is_platform_admin' => 'boolean',
         ];
     }
 

@@ -12,6 +12,9 @@
   };
 
   LF.can = (...keys) => keys.some(k => LF.perms.includes(k));
+  LF.locale = body.dataset.locale || 'en';
+  /** UI string translation (dictionary in /js/i18n/{locale}.js); falls back to English. */
+  LF.t = (s) => (window.LF_I18N && window.LF_I18N[s]) || s;
 
   // ---------- HTML escaping ----------
   const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
@@ -402,6 +405,23 @@
       <div class="small text-muted">${LF.fmt.num((p - 1) * meta.per_page + 1)}–${LF.fmt.num(Math.min(p * meta.per_page, meta.total))} of ${LF.fmt.num(meta.total)}</div>
       <ul class="pagination pagination-sm mb-0">${btn(p - 1, '‹', p <= 1)}${pages}${btn(p + 1, '›', p >= last)}</ul></div>`;
   };
+
+  // ---------- Notifications ----------
+  function loadNotifications() {
+    LF.api('GET', 'notifications', null, { silent: true }).then(r => {
+      const n = r.meta.unread;
+      $('#notifCount').text(n > 99 ? '99+' : n).toggleClass('hidden', !n);
+      $('#notifList').html(r.data.length ? r.data.map(x => `<a class="notif-item ${x.read_at ? '' : 'unread'}" href="${LF.esc(x.url || '#')}" data-notif="${x.id}">
+        <div class="t">${LF.esc(x.title)}</div>${x.body ? `<div class="text-muted">${LF.esc(x.body)}</div>` : ''}<div class="text-muted small">${LF.fmt.rel(x.created_at)}</div></a>`).join('')
+        : `<div class="p-3 small text-muted">${LF.esc(LF.t('No notifications yet.'))}</div>`);
+    }, () => {});
+  }
+  $(document).on('click', '[data-notif]', function () { LF.api('POST', 'notifications/read', { ids: [$(this).data('notif')] }, { silent: true }); });
+  $('#notifReadAll').on('click', () => LF.api('POST', 'notifications/read', {}).then(loadNotifications));
+  if (document.getElementById('notifBtn')) {
+    loadNotifications();
+    setInterval(() => { if (!document.hidden) loadNotifications(); }, 30000);
+  }
 
   // ---------- Global chrome ----------
   $('#sidebarToggle').on('click', () => {

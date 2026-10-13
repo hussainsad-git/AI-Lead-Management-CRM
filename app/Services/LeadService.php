@@ -79,7 +79,7 @@ class LeadService
      * Creates a lead, linking to an existing contact on an exact identifier match
      * (or an explicitly chosen contact) and otherwise creating a new contact.
      */
-    public function create(array $data, User $actor, string $via = 'manual'): Lead
+    public function create(array $data, ?User $actor, string $via = 'manual'): Lead
     {
         return DB::transaction(function () use ($data, $actor, $via) {
             $contact = null;
@@ -96,7 +96,7 @@ class LeadService
                 }
             }
             if (! $contact) {
-                $contact = Contact::create($attrs + ['created_by' => $actor->id]);
+                $contact = Contact::create($attrs + ['created_by' => $actor?->id]);
             }
 
             $allowDuplicate = ($data['allow_duplicate_open_lead'] ?? false) || $this->settings->get('allow_duplicate_open_leads');
@@ -104,7 +104,7 @@ class LeadService
                 $open = Lead::where('contact_id', $contact->id)->whereNull('archived_at')
                     ->whereHas('status', fn ($q) => $q->where('category', 'open'))->first();
                 if ($open) {
-                    $visible = $this->visibility->canSee($actor, $open);
+                    $visible = $actor && $this->visibility->canSee($actor, $open);
                     throw new DomainRuleException(
                         $visible ? "This contact already has an open lead (#{$open->id})." : 'This contact already has an open lead assigned to another user.',
                         'duplicate_open_lead', 409,
@@ -129,7 +129,7 @@ class LeadService
                 'location' => $data['location'] ?? null,
                 'source_notes' => $data['source_notes'] ?? null,
                 'external_lead_id' => $data['external_lead_id'] ?? null,
-                'created_by' => $actor->id,
+                'created_by' => $actor?->id,
                 'last_activity_at' => now(),
             ]);
             if (isset($data['created_at'])) { // imports may carry the original inquiry date
@@ -140,7 +140,7 @@ class LeadService
 
             $this->activity->forLead($lead, 'lead_created', $data['note'] ?? null, ['via' => $via]);
 
-            $this->attribution->record($lead, $data['attribution'] ?? [], $via === 'import' ? 'import' : 'manual', $via === 'import');
+            $this->attribution->record($lead, $data['attribution'] ?? [], $data['attribution_via'] ?? ($via === 'import' ? 'import' : 'manual'), $via === 'import');
 
             if (! empty($data['tags'])) {
                 $this->syncTags($lead, $data['tags']);
@@ -148,7 +148,7 @@ class LeadService
 
             $assignee = $data['assigned_user_id'] ?? null;
             // A rep who can only see their own leads keeps what they create.
-            if (! $assignee && $this->visibility->assigneeScope($actor) === [$actor->id]) {
+            if (! $assignee && $actor && $this->visibility->assigneeScope($actor) === [$actor->id]) {
                 $assignee = $actor->id;
             }
             if ($assignee) {
@@ -157,7 +157,7 @@ class LeadService
 
             foreach ($data['consents'] ?? [] as $channel => $granted) {
                 if ($granted) {
-                    $this->consent->record($contact, $channel, 'granted', $via === 'import' ? 'import' : 'manual_entry', $data['consent_evidence'] ?? null);
+                    $this->consent->record($contact, $channel, 'granted', $data['consent_source'] ?? ($via === 'import' ? 'import' : 'manual_entry'), $data['consent_evidence'] ?? null);
                 }
             }
 

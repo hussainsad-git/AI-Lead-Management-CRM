@@ -32,6 +32,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['web', 'auth', 'org', 'throttle:api'])
                 ->prefix('api/v1')->name('api.')
                 ->group(base_path('routes/api.php'));
+            // Public, signature-verified provider webhooks: no session, no CSRF.
+            Route::middleware(['throttle:webhooks'])->prefix('webhooks')->group(function () {
+                Route::get('whatsapp/{key}', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->where('key', '[A-Za-z0-9]{40}');
+                Route::post('whatsapp/{key}', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive'])->where('key', '[A-Za-z0-9]{40}');
+            });
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

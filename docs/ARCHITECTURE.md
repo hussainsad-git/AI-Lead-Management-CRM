@@ -17,10 +17,12 @@ Controllers (thin)  →  FormRequests (validation)  →  Services (domain logic,
    ▼
 Eloquent models with BelongsToOrganization global scope  →  MySQL 8.4
    ▲
-Queue workers / scheduler (imports, reminders, webhooks in later phases)
+Queue workers / scheduler (imports, KB ingestion, webhooks, AI replies, rescoring, missed follow-ups)
    ▲
-Integration adapters (Phase 4): WhatsAppCloudAdapter, MetaMarketingAdapter — each reports an honest
-connection state; nothing is marked "connected" without a successful authenticated call.
+Provider adapters: WhatsApp CloudApiClient, ChatClient (OpenAI / DeepSeek, OpenAI-compatible) — each reports
+an honest connection state; nothing is marked "connected" without a successful authenticated call.
+AI layer: KnowledgeBase (hybrid BM25 + embeddings) → AiResponder (grounded JSON envelope) → ConversationAutomation
+(auto-replies, suggest/auto modes, human handoff) → LeadQualifier + LeadScoring. See docs/AI_WHATSAPP.md.
 ```
 
 ### Decisions taken up front
@@ -62,9 +64,12 @@ contacts 1─* consent_records (append-only), suppression_records
 organizations 1─* call_outcomes (configurable, drive counters/status advancement)
 organizations 1─* import_jobs 1─* import_rows (staged, per-row action + messages)
 users 1─* saved_views ; organizations 1─* organization_settings ; audit_logs (append-only)
-Phase 3+: notifications, automation_rules, automation_executions
-Phase 4+: integrations (encrypted credentials), webhook_events (unique provider event id), conversations, messages, message_templates
-Phase 5+: audience_segments, audience_segment_memberships, audience_sync_jobs
+integrations (encrypted credentials, per-business webhook key) · webhook_events (unique body hash)
+contacts 1─* conversations 1─* messages (unique wamid) ; message_templates (synced from Meta)
+ai_assistants (1 per business) · auto_reply_rules · kb_documents 1─* kb_chunks (search_text + packed vector)
+ai_interactions (every AI call: tokens, latency, outcome, feedback) · notifications (deduped per user)
+leads: + score, score_label, score_factors (JSON), ai_summary, language
+Later: automation_rules, automation_executions, audience_segments, audience_segment_memberships, audience_sync_jobs
 ```
 
 Deviations from the suggested table list, with reasons:
@@ -83,13 +88,17 @@ Conventions: UTC timestamps; display in organization/user time zone. Money is `D
 | 2 | Leads (list, filters, saved views, bulk, detail) | 2 | leads.view_* |
 | 3 | Contacts (dedupe, merge, consent) | 2 | contacts.view |
 | 4 | Sales Pipeline (Kanban) | 2 | leads.view_* |
-| 5 | WhatsApp Inbox | 4 | whatsapp.view |
+| 5 | WhatsApp Inbox | ✓ | whatsapp.view / whatsapp.send |
+| 5a | AI Assistant (config, prompt, test chat, auto-replies, learning) | ✓ | ai.manage |
+| 5b | Knowledge Base | ✓ | kb.manage |
+| — | Platform Admin (businesses, system health) | ✓ | users.is_platform_admin |
+| — | My profile (details, language, time zone, password) | ✓ | any |
 | 6 | Calls & Follow-ups | 2 | followups.manage_own/all |
 | 7 | Calendar & Appointments | 2 | followups.manage_own/all |
 | 8 | Campaigns (+ manual spend) | 2 (API sync 4) | campaigns.view |
 | 9 | Audience Segments | 5 | audiences.manage |
 | 10 | Retargeting | 5 | audiences.manage |
-| 11 | Reports & Analytics | 5 | reports.view |
+| 11 | Analytics & Reports | ✓ | reports.view |
 | 12 | Team & Assignments | 2 | users.manage |
 | 13 | Import / Export | 2 | imports.run / leads.export |
 | 14 | Integrations | status 2, adapters 4 | integrations.manage |
@@ -103,9 +112,10 @@ Modules from later phases appear in navigation with an explicit "planned for Pha
 
 - [x] **Phase 1 — Foundation:** project skeleton, migrations, Argon2id auth with throttling + session rotation, RBAC, org isolation, security headers/CSP, layout + reusable UI components.
 - [x] **Phase 2 — Core CRM** (37 automated tests passing; browser-verified): dashboard (real data, honest ad-metric states), contacts + leads, search/filters/saved views/column chooser, bulk actions, lead detail + timeline, Kanban + status rules, calls/follow-ups/appointments, CSV/XLSX import wizard with dry run + error report, safe exports, campaigns + manual spend, team/users, settings, audit log.
-- [ ] **Phase 3 — Automation:** scheduler, in-app/email notifications, assignment rules (round-robin/territory), SLA reminders, escalation, lead scoring with explainable factors, rule engine with loop guard.
-- [ ] **Phase 4 — Integrations:** WhatsApp Cloud API (verify token + `X-Hub-Signature-256`, idempotent webhook ingestion, referral attribution, templates, 24h window), Meta Marketing API (campaign/adset/ad sync, insights spend), Lead Ads retrieval, integration monitoring.
-- [ ] **Phase 5 — Marketing intelligence:** dynamic segments (AND/OR), eligibility + suppression, hashed customer-list sync, reports module.
+- [x] **AI & WhatsApp release:** WhatsApp Cloud API (signed, idempotent webhooks; inbox; templates; 24h window; delivery statuses), OpenAI + DeepSeek assistant with knowledge base, instant auto-replies, suggest/auto modes with handoff, human-approved learning, lead qualification, transparent scoring, round-robin assignment, in-app notifications, analytics & reports, platform admin (multi-business), Urdu/Arabic UI with RTL, profile and business settings. 62 automated tests.
+- [~] **Phase 3 — Automation:** done: scheduler, in-app notifications, round-robin, lead scoring, missed follow-ups. Remaining: email notifications, SLA reminders/escalation rules, generic rule engine UI.
+- [~] **Phase 4 — Integrations:** done: WhatsApp Cloud API, OpenAI, DeepSeek. Remaining: Meta Marketing API spend sync, Lead Ads (Instant Forms).
+- [~] **Phase 5 — Marketing intelligence:** done: analytics & reports with CSV export. Remaining: audience segments, Custom Audience sync.
 - [ ] **Phase 6 — Production readiness:** security review, load/perf indexes review, error monitoring, backup drills, API tokens for external clients.
 
 ## 6. ER diagram (Phases 1–2)

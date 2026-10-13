@@ -27,6 +27,10 @@ class ResolveOrganization
             abort(401, 'Your account is not active.');
         }
         $this->current->set($org);
+        $locale = $user->locale ?: $org->default_locale ?: 'en';
+        if (array_key_exists($locale, config('locales'))) {
+            app()->setLocale($locale);
+        }
         if ($user->timezone === null) {
             $user->setAttribute('timezone', $org->timezone);
         }

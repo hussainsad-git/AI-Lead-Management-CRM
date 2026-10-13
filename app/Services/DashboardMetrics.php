@@ -85,6 +85,7 @@ class DashboardMetrics
             'currency' => $org->currency,
             'summary' => $summary,
             'advertising' => $this->advertising($user, $orgWide, $range, $cohort, $org->currency),
+            'conversations' => $orgWide && $user->hasPermission('whatsapp.view') ? $this->conversations($range) : null,
             'charts' => [
                 'acquisition' => $this->acquisition($cohort(), $range, $tz),
                 'by_source' => $this->bySource($cohort()),
@@ -173,6 +174,20 @@ class DashboardMetrics
                 $leads ? null : 'No leads in this range are attributed to campaigns with spend; cost per lead cannot be calculated.',
                 $foreign ? "$foreign spend row(s) in another currency were excluded." : null,
             ])),
+        ];
+    }
+
+    private function conversations(DateRange $range): array
+    {
+        $a = app(AnalyticsService::class);
+        $m = $a->messaging($range);
+        $ai = $a->ai($range);
+
+        return [
+            'new' => $m['new_conversations'], 'inbound' => $m['inbound'], 'ai_replies' => (int) ($m['outbound_by']['ai'] ?? 0),
+            'auto_replies' => (int) ($m['outbound_by']['auto_reply'] ?? 0), 'awaiting_human' => $m['awaiting_human'],
+            'median_first_response_min' => $m['median_first_response_min'], 'ai_resolution_rate' => $ai['resolution_rate'],
+            'whatsapp_leads' => $m['whatsapp_leads'],
         ];
     }
 

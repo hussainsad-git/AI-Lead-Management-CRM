@@ -31,8 +31,16 @@ class SettingsController extends ApiController
         $this->guard();
 
         return $this->ok([
-            'organization' => $org->require()->only(['name', 'timezone', 'currency', 'default_country']),
+            'organization' => $org->require()->only(['name', 'timezone', 'currency', 'default_country', 'industry', 'brand_color', 'default_locale']) + ['has_logo' => (bool) $org->require()->logo_path],
             'settings' => $settings->all(),
+            'business_hours' => app(\App\Services\BusinessHours::class)->schedule(),
+            'auto_assign' => (array) ($settings->get('auto_assign') ?? ['enabled' => false]),
+            'scoring_weights' => app(\App\Services\LeadScoring::class)->weights(),
+            'scoring_defaults' => \App\Services\LeadScoring::DEFAULT_WEIGHTS,
+            'industries' => collect(config('ai.industries'))->map(fn ($v, $k) => ['key' => $k, 'label' => $v['label']])->values(),
+            'locales' => config('locales'),
+            'users' => \App\Models\User::query()->inCurrentOrganization()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'team_id']),
+            'teams' => \App\Models\Team::orderBy('name')->get(['id', 'name']),
             'statuses' => LeadStatus::orderBy('sort_order')->withCount('leads')->get(),
             'sources' => LeadSource::orderBy('sort_order')->get(),
             'outcomes' => CallOutcome::orderBy('sort_order')->get(),
@@ -60,6 +68,49 @@ class SettingsController extends ApiController
             $settings->set($k, $k === 'allow_duplicate_open_leads' ? (bool) $v : $v);
         }
         $this->audit->log('settings.organization_updated', $org, ['before' => $before, 'after' => $org->only(['name', 'timezone', 'currency', 'default_country']) + $settings->all()]);
+
+        return $this->ok(['saved' => true]);
+    }
+
+    public function updateBusiness(Request $request, CurrentOrganization $current, OrganizationSettings $settings)
+    {
+        $this->guard();
+        $hhmm = 'regex:/^([01]\d|2[0-3]):[0-5]\d$/';
+        $data = $request->validate([
+            'industry' => ['required', Rule::in(array_keys(config('ai.industries')))],
+            'brand_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'default_locale' => ['required', Rule::in(array_keys(config('locales')))],
+            'business_hours' => ['required', 'array'],
+            'business_hours.*' => ['nullable', 'array', 'size:2'], 'business_hours.*.*' => ['string', $hhmm],
+            'auto_assign.enabled' => ['required', 'boolean'],
+            'auto_assign.team_id' => ['nullable', 'integer', Rule::exists('teams', 'id')->where('organization_id', $current->id())],
+            'auto_assign.user_ids' => ['nullable', 'array'], 'auto_assign.user_ids.*' => ['integer', Rule::exists('users', 'id')->where('organization_id', $current->id())],
+            'scoring_weights' => ['nullable', 'array'], 'scoring_weights.*' => ['integer', 'min:-50', 'max:50'],
+        ]);
+        foreach ($data['business_hours'] as $day => $span) {
+            abort_unless(in_array($day, \App\Services\BusinessHours::DAYS, true), 422, 'Unknown day.');
+            abort_if($span && $span[0] >= $span[1], 422, 'Opening time must be before closing time ('.$day.').');
+        }
+        $current->require()->update(['industry' => $data['industry'], 'brand_color' => $data['brand_color'] ?? null, 'default_locale' => $data['default_locale']]);
+        $settings->set('business_hours', $data['business_hours']);
+        $settings->set('auto_assign', $data['auto_assign']);
+        if (isset($data['scoring_weights'])) {
+            $settings->set('scoring_weights', array_intersect_key($data['scoring_weights'], \App\Services\LeadScoring::DEFAULT_WEIGHTS));
+        }
+        $this->audit->log('settings.business_updated', $current->require(), [], ['industry' => $data['industry'], 'auto_assign' => $data['auto_assign']['enabled']]);
+
+        return $this->ok(['saved' => true]);
+    }
+
+    public function uploadLogo(Request $request, CurrentOrganization $current)
+    {
+        $this->guard();
+        $request->validate(['logo' => ['required', 'file', 'max:1024', 'mimes:png,jpg,jpeg,webp']]);
+        $org = $current->require();
+        if ($org->logo_path) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($org->logo_path);
+        }
+        $org->update(['logo_path' => $request->file('logo')->store('branding/'.$org->id, 'local')]);
 
         return $this->ok(['saved' => true]);
     }

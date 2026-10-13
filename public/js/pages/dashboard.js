@@ -48,6 +48,14 @@
         ${kpi('Response of contacted', LF.fmt.pct(s.response_rate_of_contacted), 'Responded ÷ contacted')}
       </div>
       <div class="row g-2 mb-3">${adCards(d.advertising, cur)}</div>
+      ${d.conversations ? `<div class="row g-2 mb-3">
+        ${kpi(LF.t('WhatsApp conversations'), LF.fmt.num(d.conversations.new), LF.fmt.num(d.conversations.whatsapp_leads) + ' ' + LF.t('leads captured'), { href: '/whatsapp' })}
+        ${kpi(LF.t('Awaiting a human'), LF.fmt.num(d.conversations.awaiting_human), LF.t('AI handed off'), { alert: d.conversations.awaiting_human > 0, href: '/whatsapp?view=handoff' })}
+        ${kpi(LF.t('AI replies'), LF.fmt.num(d.conversations.ai_replies), LF.fmt.num(d.conversations.auto_replies) + ' ' + LF.t('instant auto-replies'))}
+        ${kpi(LF.t('AI resolution rate'), d.conversations.ai_resolution_rate === null ? '<span class="kpi-unavailable">—</span>' : d.conversations.ai_resolution_rate + '%', LF.t('no human needed'))}
+        ${kpi(LF.t('Median first response'), d.conversations.median_first_response_min === null ? '<span class="kpi-unavailable">—</span>' : d.conversations.median_first_response_min + ' ' + LF.t('min'), LF.t('new conversations'))}
+        ${kpi(LF.t('Messages received'), LF.fmt.num(d.conversations.inbound), '')}
+      </div>` : ''}
       ${d.advertising.notes && d.advertising.notes.length ? `<div class="lf-notice mb-3">${d.advertising.notes.map(LF.esc).join('<br>')}</div>` : ''}
       <div class="row g-3">
         <div class="col-xl-8"><div class="card h-100"><div class="card-header">Lead acquisition <span class="text-muted fw-normal small">per ${LF.esc(d.charts.acquisition.granularity)}</span></div><div class="card-body"><div class="chart-box"><canvas id="chAcq" aria-label="Lead acquisition over time" role="img"></canvas></div></div></div></div>

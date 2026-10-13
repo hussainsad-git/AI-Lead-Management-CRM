@@ -12,7 +12,7 @@ class LeadFilter
     public const SORTABLE = [
         'id' => 'leads.id', 'created_at' => 'leads.created_at', 'last_activity_at' => 'leads.last_activity_at',
         'next_follow_up_at' => 'leads.next_follow_up_at', 'last_contacted_at' => 'leads.last_contacted_at',
-        'priority' => 'leads.priority', 'name' => 'contacts.name', 'status' => 'lead_statuses.sort_order',
+        'priority' => 'leads.priority', 'name' => 'contacts.name', 'status' => 'lead_statuses.sort_order', 'score' => 'leads.score',
     ];
 
     public function __construct(private CurrentOrganization $org) {}
@@ -77,6 +77,9 @@ class LeadFilter
         }
         if ($ids = $this->ids($f['tag_ids'] ?? null)) {
             $q->whereHas('tags', fn ($t) => $t->whereIn('tags.id', $ids));
+        }
+        if ($sl = array_intersect((array) ($f['score_label'] ?? []), ['hot', 'warm', 'cold', 'needs_review'])) {
+            $q->whereIn('leads.score_label', $sl);
         }
         if ($p = array_intersect((array) ($f['priority'] ?? []), ['low', 'normal', 'high', 'urgent'])) {
             $q->whereIn('leads.priority', $p);

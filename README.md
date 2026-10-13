@@ -2,7 +2,9 @@
 
 Lead management for businesses that run Facebook/Instagram ads with WhatsApp as the main channel: one place for leads from ads, WhatsApp, forms, walk-ins and spreadsheets; a sales pipeline; calls, callbacks and appointments; honest campaign cost metrics; and auditable, permissioned access.
 
-**Status:** Phases 1–2 (foundation + core CRM) are implemented and tested. WhatsApp Cloud API, Meta Marketing API, automation and audience sync are later phases and are shown in the app as *not configured / planned* — nothing is simulated. See `docs/ARCHITECTURE.md`.
+**Status:** Core CRM, WhatsApp Cloud API inbox, AI assistant (OpenAI / DeepSeek) with knowledge base, auto-replies, lead qualification & scoring, analytics, multi-business admin and Urdu/Arabic (RTL) UI are implemented and tested (62 automated tests). Meta Marketing API spend sync, Lead Ads, audience segments and email notifications are still planned and shown as such — nothing is simulated. See `docs/ARCHITECTURE.md` and `docs/AI_WHATSAPP.md`.
+
+**Suited to:** agencies, lead-generation and real-estate businesses, educational institutes, clinics, eCommerce stores, support teams and service businesses — industry presets configure the assistant for each.
 
 ## Stack
 
@@ -11,7 +13,9 @@ Lead management for businesses that run Facebook/Instagram ads with WhatsApp as 
 | Runtime | PHP 8.3+ (8.4 recommended), Laravel 13 |
 | Database | MySQL 8.4 (SQLite works for local dev/tests) |
 | Frontend | Blade shells + jQuery 4 modules, Bootstrap 5.3, Bootstrap Icons, Chart.js 4, SortableJS — all vendored in `public/vendor`, no build step |
-| Files | PhpSpreadsheet (XLSX), libphonenumber (E.164) |
+| Files | PhpSpreadsheet (XLSX), libphonenumber (E.164), smalot/pdfparser (knowledge-base PDFs) |
+| AI | OpenAI or DeepSeek (OpenAI-compatible Chat Completions), OpenAI embeddings optional |
+| Messaging | WhatsApp Business Platform Cloud API (Graph API v24.0) |
 | Tests | PHPUnit 12 |
 
 Required PHP extensions: `pdo_mysql`, `mbstring`, `intl`, `zip`, `xml`, `sodium`, `gd`, and Argon2 support in `password_hash` (standard on Linux builds).
@@ -34,10 +38,13 @@ Synthetic demo data (local only, refuses to run in production):
 
 ```bash
 php artisan db:seed --class=DemoSeeder
-# admin@demo.test / Password123!  (also manager@, rep1@, rep2@, marketing@, analyst@demo.test)
+# admin@demo.test / Password123!  (platform admin; also manager@, rep1@, rep2@, marketing@, analyst@demo.test)
+# includes synthetic WhatsApp conversations and knowledge-base content
 ```
 
-Run tests: `php vendor/bin/phpunit` (37 tests, in-memory SQLite).
+Run tests: `php vendor/bin/phpunit` (62 tests, in-memory SQLite; external APIs are faked).
+
+The first administrator created by `leadflow:install` is the platform administrator (Platform Admin page: create, suspend and monitor businesses). Others can be promoted with `users.is_platform_admin = 1`.
 
 ## Production deployment (standard PHP/MySQL host or VPS)
 
@@ -63,8 +70,8 @@ Run tests: `php vendor/bin/phpunit` (37 tests, in-memory SQLite).
    ```cron
    * * * * * cd /var/www/leadflow && php artisan schedule:run >> /dev/null 2>&1
    ```
-   Jobs: mark missed follow-ups (hourly), prune failed jobs (daily).
-6. **Queue worker** — imports depend on it. Supervisor example:
+   Jobs: mark missed follow-ups (hourly), rescore open leads (hourly), prune failed jobs (daily).
+6. **Queue worker** — required: WhatsApp webhooks, AI replies, knowledge-base processing and imports all run on it. Without it, messages are stored but never answered. Supervisor example:
    ```ini
    [program:leadflow-worker]
    command=php /var/www/leadflow/artisan queue:work database --sleep=3 --tries=1 --max-time=3600
@@ -104,5 +111,6 @@ Argon2id passwords; session regenerated on login; HttpOnly/Secure/SameSite cooki
 - `docs/ARCHITECTURE.md` — architecture, data model, ER diagram, navigation map, phase checklist
 - `docs/API.md` — REST endpoints, response/error format, metric definitions
 - `docs/QA_CHECKLIST.md` — manual test script
-- `docs/INTEGRATIONS.md` — what Phase 4 will need from your Meta/WhatsApp accounts
+- `docs/AI_WHATSAPP.md` — message flow, AI guardrails, knowledge base, learning, scoring
+- `docs/INTEGRATIONS.md` — step-by-step WhatsApp / OpenAI / DeepSeek setup
 - `docs/ASSUMPTIONS.md` — decisions made where the brief was open

@@ -36,8 +36,10 @@ return [
         'audit.view' => ['admin', 'View audit logs'],
         'automation.manage' => ['admin', 'Manage automation rules (Phase 3)'],
         'audiences.manage' => ['marketing', 'Manage audience segments and retargeting exports (Phase 5)'],
-        'whatsapp.view' => ['whatsapp', 'View WhatsApp conversations (Phase 4)'],
-        'whatsapp.send' => ['whatsapp', 'Send WhatsApp messages (Phase 4)'],
+        'whatsapp.view' => ['whatsapp', 'View WhatsApp conversations (own/team/all per lead visibility)'],
+        'whatsapp.send' => ['whatsapp', 'Send WhatsApp messages and use AI suggestions'],
+        'ai.manage' => ['ai', 'Configure the AI assistant, prompts, auto-replies and review AI learning'],
+        'kb.manage' => ['ai', 'Manage the knowledge base and teach the assistant'],
     ],
 
     'roles' => [
@@ -46,7 +48,7 @@ return [
         'sales_manager' => ['Sales Manager', 'Runs a sales team', [
             'dashboard.view', 'leads.view_team', 'leads.create', 'leads.update', 'leads.assign', 'leads.bulk_update',
             'leads.archive', 'leads.export', 'contacts.view', 'contacts.update', 'contacts.merge', 'consent.manage',
-            'followups.manage_own', 'followups.manage_all', 'campaigns.view', 'imports.run', 'reports.view', 'whatsapp.view', 'whatsapp.send',
+            'followups.manage_own', 'followups.manage_all', 'campaigns.view', 'imports.run', 'reports.view', 'whatsapp.view', 'whatsapp.send', 'kb.manage',
         ]],
         'sales_rep' => ['Sales Representative', 'Works assigned leads', [
             'dashboard.view', 'leads.view_own', 'leads.create', 'leads.update', 'contacts.view', 'contacts.update',
@@ -54,7 +56,7 @@ return [
         ]],
         'marketing_manager' => ['Marketing Manager', 'Campaigns, audiences and reporting', [
             'dashboard.view', 'leads.view_all', 'contacts.view', 'campaigns.view', 'campaigns.manage', 'imports.run',
-            'reports.view', 'leads.export', 'audiences.manage',
+            'reports.view', 'leads.export', 'audiences.manage', 'ai.manage', 'kb.manage', 'whatsapp.view',
         ]],
         'analyst' => ['Read-Only Analyst', 'Aggregated reporting only, no lead PII', [
             'dashboard.view', 'reports.view', 'campaigns.view',

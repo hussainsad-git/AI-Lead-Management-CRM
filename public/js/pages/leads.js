@@ -13,6 +13,7 @@
     ad_set: { label: 'Ad set', render: l => LF.esc(l.attribution ? l.attribution.ad_set || '' : '') },
     ad: { label: 'Ad', render: l => LF.esc(l.attribution ? l.attribution.ad || '' : '') },
     status: { label: 'Status', sort: 'status', render: l => LF.statusBadge(l.status) },
+    score: { label: 'Score', sort: 'score', render: l => l.score_label ? `<span class="score-pill score-${LF.esc(l.score_label)}" title="${LF.esc((l.score_factors || []).map(f => f.label + ' ' + (f.points > 0 ? '+' : '') + f.points).join('\n'))}">${LF.esc(LF.t(l.score_label.replace('_', ' ')))} ${l.score ?? ''}</span>` : '<span class="cell-muted">—</span>' },
     priority: { label: 'Priority', sort: 'priority', render: l => LF.priorityBadge(l.priority) },
     assignee: { label: 'Assigned', render: l => l.assignee ? LF.esc(l.assignee.name) : '<span class="cell-muted">Unassigned</span>' },
     attempts: { label: 'Attempts', render: l => `${l.contact_attempts}${l.unanswered_attempts ? ` <span class="cell-muted">(${l.unanswered_attempts} unanswered)</span>` : ''}` },
@@ -22,7 +23,7 @@
     last_activity_at: { label: 'Last activity', sort: 'last_activity_at', render: l => LF.fmt.rel(l.last_activity_at) },
     tags: { label: 'Tags', render: l => (l.tags || []).map(t => `<span class="tag">${LF.esc(t.name)}</span>`).join('') },
   };
-  const DEFAULT_COLS = ['name', 'phone', 'source', 'campaign', 'status', 'priority', 'assignee', 'last_contacted_at', 'next_follow_up_at', 'created_at'];
+  const DEFAULT_COLS = ['name', 'phone', 'source', 'campaign', 'status', 'score', 'priority', 'assignee', 'last_contacted_at', 'next_follow_up_at', 'created_at'];
 
   const state = { page: 1, sort: 'created_at', dir: 'desc', cols: DEFAULT_COLS.slice(), selected: new Set(), allMatching: false, meta: null, rows: [] };
   try { const c = JSON.parse(localStorage.getItem('lf.leads.cols') || 'null'); if (Array.isArray(c) && c.length) state.cols = c.filter(k => COLUMNS[k]); } catch (e) { /* ignore */ }
@@ -44,7 +45,7 @@
       if (f.status.startsWith('cat:')) f.status_category = f.status.slice(4); else f.status_ids = [f.status];
       delete f.status;
     }
-    ['source_ids', 'assigned_user_ids', 'campaign_ids', 'tag_ids', 'priority'].forEach(k => { if (f[k] && !Array.isArray(f[k])) f[k] = [f[k]]; });
+    ['source_ids', 'assigned_user_ids', 'campaign_ids', 'tag_ids', 'priority', 'score_label'].forEach(k => { if (f[k] && !Array.isArray(f[k])) f[k] = [f[k]]; });
     if (f.archived === 'exclude') delete f.archived;
     return f;
   }

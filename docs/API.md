@@ -75,3 +75,30 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 * **Cost per lead** = manually recorded spend in range (organization currency only) ÷ leads in range first-touch attributed to campaigns that have spend in range. Not shown without spend; foreign-currency rows are excluded and reported.
 * **CPQL / CAC** use the same spend over qualified / converted attributed leads. CAC is ad spend only.
 * **Awaiting first contact** and **Overdue follow-ups** are current-state queues.
+
+
+## AI, WhatsApp & admin endpoints
+
+| Method & path | Permission | Notes |
+|---|---|---|
+| GET `conversations?view=all\|mine\|unassigned\|handoff\|unread\|closed&q` | whatsapp.view | visibility follows lead visibility; `meta.counts` |
+| GET `conversations/{id}` | whatsapp.view | messages, lead + score factors, 24h window, latest AI suggestion, approved templates |
+| GET `conversations/{id}/poll?after_id` | whatsapp.view | new messages + status changes |
+| PATCH `conversations/{id}` | whatsapp.view (+leads.assign to assign others) | `{ai_mode: inherit\|on\|off, status, assigned_user_id, resolve_handoff}` |
+| POST `conversations/{id}/messages` | whatsapp.send | `{body, interaction_id?}` or `{template_id, params[]}`; 422 `window_closed` / `contact_suppressed`; 502 `whatsapp_send_failed` |
+| POST `conversations/{id}/suggest` | whatsapp.send | AI draft with sources (not sent) |
+| POST `conversations/{id}/read` | whatsapp.view | clears unread, sends read receipt |
+| POST `ai-interactions/{id}/feedback` | whatsapp.send / ai.manage (+kb.manage to teach) | `{feedback: up\|down\|corrected, corrected_text, question, teach}` |
+| GET/PUT `ai/assistant`, POST `ai/assistant/preset` | ai.manage | provider, model, temperature, mode, hours, languages, prompts, handoff keywords, fields |
+| GET `ai/models?provider=` | ai.manage | live model list from the provider |
+| POST `ai/playground` | ai.manage | `{question, history[]}` → reply, flags, sources, latency, tokens |
+| GET `ai/learning`, POST `ai/learning/{id}/dismiss` | ai.manage | learning queue |
+| POST/PATCH/DELETE `ai/rules[/{id}]` | ai.manage | auto-reply rules |
+| GET/POST `kb/documents`, GET/PATCH/DELETE `kb/documents/{id}`, POST `kb/documents/{id}/reindex`, GET `kb/search?q=` | kb.manage (read: ai.manage) | multipart `file` or `{type: text\|faq, ...}` |
+| GET `integrations/status`, PUT `integrations/{whatsapp_cloud\|openai\|deepseek}`, POST `.../test`, POST `integrations/whatsapp_cloud/rotate-webhook \| verify-token \| templates/sync` | integrations.manage | secrets write-only |
+| GET `analytics`, GET `analytics/export?section=sources\|campaigns\|salespeople` | reports.view | same date/filters as dashboard + `source_id, user_id, campaign_id, platform` |
+| GET `notifications`, POST `notifications/read {ids?}` | any | own notifications |
+| GET/PATCH `profile`, POST `profile/password` | any | password change signs out other sessions |
+| PATCH `settings/business`, POST `settings/logo` | settings.manage | industry, colour, locale, hours, auto-assign, scoring weights |
+| GET `platform`, POST `platform/organizations`, PATCH `platform/organizations/{id}` | platform admin | counts only, no customer records |
+| GET/POST `/webhooks/whatsapp/{key}` | public, signature-verified | Meta verification + events |

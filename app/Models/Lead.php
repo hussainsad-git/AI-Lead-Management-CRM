@@ -26,6 +26,8 @@ class Lead extends TenantModel
             'next_follow_up_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'archived_at' => 'datetime',
+            'score_factors' => 'array',
+            'scored_at' => 'datetime',
         ];
     }
 
@@ -92,6 +94,11 @@ class Lead extends TenantModel
     public function statusHistory(): HasMany
     {
         return $this->hasMany(LeadStatusHistory::class);
+    }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
     }
 
     public function isOpen(): bool

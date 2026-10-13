@@ -9,7 +9,7 @@
     follow_up_cancelled: ['x-circle', ''], appointment_scheduled: ['calendar-event', ''], appointment_completed: ['calendar-check', ''],
     appointment_cancelled: ['calendar-x', ''], appointment_no_show: ['calendar-x', 'tl-warn'], lead_updated: ['pencil', ''], contact_updated: ['pencil', ''],
     opt_out: ['slash-circle', 'tl-warn'], consent_granted: ['shield-check', ''], consent_withdrawn: ['shield-x', 'tl-warn'], archived: ['archive', 'tl-warn'],
-    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''],
+    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''], whatsapp_in: ['whatsapp', 'tl-call'], whatsapp_out: ['send', ''], ai_qualified: ['stars', 'tl-status'],
   };
 
   function tlText(a) {
@@ -24,6 +24,9 @@
       case 'follow_up_rescheduled': return `Follow-up moved to ${LF.fmt.dateTime(m.to)}`;
       case 'follow_up_cancelled': return 'Follow-up cancelled';
       case 'appointment_scheduled': return `${LF.esc(LF.fmt.label(m.type))} scheduled for ${LF.fmt.dateTime(m.starts_at)}`;
+      case 'whatsapp_in': return `<i class="bi bi-whatsapp text-success"></i> ${LF.t('Customer message')}`;
+      case 'whatsapp_out': return `${LF.t('WhatsApp reply')} <span class="text-muted">(${LF.esc(LF.fmt.label(m.sender || 'user'))})</span>`;
+      case 'ai_qualified': return `${LF.t('AI captured')}: ` + Object.entries(m.filled || {}).map(([k, v]) => `${LF.esc(LF.fmt.label(k))} = <strong>${LF.esc(v)}</strong>`).join(', ');
       case 'lead_updated': case 'contact_updated': return 'Updated ' + Object.keys(m.changes || {}).map(k => LF.esc(LF.fmt.label(k.replace('contact.', '')))).join(', ');
       default: return LF.esc(LF.fmt.label(a.type));
     }
@@ -52,7 +55,7 @@
       </div>
       <div class="lf-actions">
         ${c.phone && !dnc ? `<a class="btn btn-light btn-sm" href="tel:${LF.esc(c.phone)}"><i class="bi bi-telephone"></i> Call</a>` : ''}
-        ${wa && !dnc ? `<a class="btn btn-light btn-sm" href="${wa}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : ''}
+        ${D.conversation_id ? `<a class="btn btn-light btn-sm" href="/whatsapp?c=${D.conversation_id}"><i class="bi bi-chat-dots"></i> ${LF.t('Conversation')}</a>` : (wa && !dnc ? `<a class="btn btn-light btn-sm" href="${wa}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : '')}
         ${canFU && !closed ? '<button class="btn btn-primary btn-sm" data-act="log-call"><i class="bi bi-journal-check"></i> Log call</button>' : ''}
         ${canFU && !closed && !dnc ? '<button class="btn btn-light btn-sm" data-act="follow-up"><i class="bi bi-alarm"></i> Follow-up</button>' : ''}
         ${canFU && !closed && !dnc ? '<button class="btn btn-light btn-sm" data-act="appt"><i class="bi bi-calendar-plus"></i> Appointment</button>' : ''}
@@ -85,6 +88,9 @@
           ])}
         </div></div>
 
+        ${l.score_label || l.ai_summary ? `<div class="card mb-3"><div class="card-header d-flex align-items-center">${LF.t('Lead score')}${l.score_label ? `<span class="score-pill score-${LF.esc(l.score_label)} ms-auto">${LF.esc(LF.t(l.score_label.replace('_', ' ')))} · ${l.score}</span>` : ''}</div><div class="card-body">
+          ${(l.score_factors || []).map(f => `<div class="factor"><span>${LF.esc(f.label)}</span><span class="${f.points >= 0 ? 'pos' : 'neg'}">${f.points > 0 ? '+' : ''}${f.points}</span></div>`).join('')}
+          ${l.ai_summary ? `<div class="small mt-2"><span class="small-caps">${LF.t('AI summary')}</span><div dir="auto">${LF.esc(l.ai_summary)}</div></div>` : ''}</div></div>` : ''}
         <div class="card mb-3"><div class="card-header d-flex">Contact${canUpd && LF.can('contacts.update') ? '<button class="btn btn-sm btn-link ms-auto p-0" data-act="edit">Edit</button>' : ''}</div><div class="card-body">
           ${dl([
             ['Type', LF.fmt.label(c.type)], ['Name', LF.esc(c.name)], ['Company', LF.esc(c.company_name)],

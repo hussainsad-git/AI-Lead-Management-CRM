@@ -16,7 +16,7 @@
       $('#o-tz').html(S.timezones.map(t => `<option ${t === o.timezone ? 'selected' : ''}>${LF.esc(t)}</option>`).join(''));
       LF.fillFromLookups($('#orgForm')).then(() => $('#o-country').val(o.default_country));
       $('#o-ident').val(st.required_identifier); $('#o-sla').val(st.first_contact_sla_minutes); $('#o-dup').prop('checked', !!st.allow_duplicate_open_leads);
-      renderStatuses(); renderSources(); renderOutcomes();
+      renderStatuses(); renderSources(); renderOutcomes(); renderBusiness();
     });
   }
 
@@ -63,6 +63,47 @@
   $('#outcomeBody').on('change', '[data-oc]', function () {
     const id = $(this).closest('tr').data('id'), key = $(this).data('oc');
     LF.api('PATCH', 'settings/outcomes/' + id, { [key]: this.type === 'checkbox' ? this.checked : (this.value || null) }).then(() => { LF.toast('Outcome updated'); LF.lookups(true); loadSettings(); }, () => loadSettings());
+  });
+
+  const WLABEL = { recent_inbound: 'Messaged in last 48h', explicit_interest: 'Explicit interest', medium_interest: 'Some interest', budget_stated: 'Budget stated',
+    callback_requested: 'Callback requested', appointment_booked: 'Appointment booked', repeated_engagement: '3+ messages', stale_14d: 'Quiet > 14 days', stale_30d: 'Quiet > 30 days',
+    unanswered_3: '3+ unanswered calls', unanswered_5: '5+ unanswered calls' };
+  function renderBusiness() {
+    const o = S.organization;
+    $('#b-ind').html(S.industries.map(i => `<option value="${i.key}" ${i.key === o.industry ? 'selected' : ''}>${LF.esc(i.label)}</option>`).join(''));
+    $('#b-locale').html(Object.entries(S.locales).map(([k, v]) => `<option value="${k}" ${k === o.default_locale ? 'selected' : ''}>${LF.esc(v.native)}</option>`).join(''));
+    $('#b-color').val(o.brand_color || '#2563eb').data('set', !!o.brand_color);
+    const days = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+    $('#b-hours').html(Object.entries(days).map(([d, label]) => { const h = S.business_hours[d];
+      return `<span class="small">${LF.t(label)}</span><input class="form-control form-control-sm" type="time" data-h="${d}" data-i="0" value="${h ? h[0] : ''}" ${h ? '' : 'disabled'} aria-label="${label} open">
+        <input class="form-control form-control-sm" type="time" data-h="${d}" data-i="1" value="${h ? h[1] : ''}" ${h ? '' : 'disabled'} aria-label="${label} close">
+        <div class="form-check mb-0"><input class="form-check-input" type="checkbox" data-closed="${d}" id="cl-${d}" ${h ? '' : 'checked'}><label class="form-check-label small" for="cl-${d}">${LF.t('closed')}</label></div>`; }).join(''));
+    const aa = S.auto_assign || {};
+    $('#aa-on').prop('checked', !!aa.enabled);
+    $('#aa-team').html(`<option value="">${LF.t('Any team')}</option>` + S.teams.map(x => `<option value="${x.id}" ${x.id === aa.team_id ? 'selected' : ''}>${LF.esc(x.name)}</option>`).join(''));
+    $('#aa-users').html(S.users.map(u => `<div class="form-check"><input class="form-check-input" type="checkbox" data-aa="${u.id}" id="aa-${u.id}" ${(aa.user_ids || []).includes(u.id) ? 'checked' : ''}><label class="form-check-label small" for="aa-${u.id}">${LF.esc(u.name)}</label></div>`).join(''));
+    $('#b-weights').html(Object.entries(S.scoring_weights).map(([k, v]) => `<div class="col-6 col-md-3 col-xl-2"><label class="form-label small" for="w-${k}">${LF.esc(LF.t(WLABEL[k] || k))}</label>
+      <input class="form-control form-control-sm" type="number" min="-50" max="50" id="w-${k}" data-w="${k}" value="${v}" placeholder="${S.scoring_defaults[k]}"></div>`).join(''));
+  }
+  $(document).on('change', '[data-closed]', function () { $(`[data-h="${$(this).data('closed')}"]`).prop('disabled', this.checked).val(this.checked ? '' : '09:00'); });
+  $('#b-color').on('input', function () { $(this).data('set', true); });
+  $('#b-color-reset').on('click', () => $('#b-color').val('#2563eb').data('set', false));
+  $('#b-logo').on('change', function () {
+    const f = this.files[0]; if (!f) return;
+    const fd = new FormData(); fd.append('logo', f);
+    LF.api('POST', 'settings/logo', fd).then(() => { LF.toast(LF.t('Logo updated')); setTimeout(() => location.reload(), 600); });
+  });
+  $('#bizForm').on('submit', function (e) {
+    e.preventDefault();
+    const hours = {};
+    ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].forEach(d => {
+      hours[d] = $(`[data-closed="${d}"]`).is(':checked') ? null : [$(`[data-h="${d}"][data-i="0"]`).val(), $(`[data-h="${d}"][data-i="1"]`).val()];
+    });
+    const weights = {}; $('[data-w]').each(function () { if (this.value !== '') weights[$(this).data('w')] = parseInt(this.value, 10); });
+    const data = { industry: $('#b-ind').val(), default_locale: $('#b-locale').val(), brand_color: $('#b-color').data('set') ? $('#b-color').val() : null,
+      business_hours: hours, scoring_weights: weights,
+      auto_assign: { enabled: $('#aa-on').is(':checked'), team_id: $('#aa-team').val() ? parseInt($('#aa-team').val(), 10) : null, user_ids: $('[data-aa]:checked').map((i, el) => parseInt($(el).data('aa'), 10)).get() } };
+    LF.api('PATCH', 'settings/business', data, { form: $(this) }).then(() => { LF.toast(LF.t('Business settings saved')); setTimeout(() => location.reload(), 500); });
   });
 
   $('#orgForm').on('submit', function (e) {

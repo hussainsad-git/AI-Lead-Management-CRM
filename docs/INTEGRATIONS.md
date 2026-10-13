@@ -1,25 +1,26 @@
-# Integrations — what Phase 4 will need
+# Integrations setup
 
-Nothing in the current build talks to Meta or WhatsApp. The Integrations page reports every connection as *Not configured*. These are the business assets and approvals to prepare now (names per Meta's developer platform; confirm against current Meta docs when Phase 4 starts, as permissions and API versions change):
+All credentials are entered in **Integrations** per business, encrypted with `APP_KEY`, and never returned to the browser (only "set" + last-4 hint). A connection shows **Connected** only after **Test connection** succeeds; failures show the provider's error and time.
 
-## WhatsApp Business Platform (Cloud API)
-- Meta Business portfolio (business verification raises messaging limits).
-- WhatsApp Business Account with a phone number registered to the Cloud API (a number used in the WhatsApp Business *app* must be migrated or a new one used).
-- Meta app with WhatsApp product; permissions `whatsapp_business_messaging`, `whatsapp_business_management`.
-- A **system-user** access token (not a personal token) scoped to the WABA.
-- Public HTTPS webhook URL; LeadFlow will verify the subscription handshake with a verify token and authenticate every POST with the app-secret `X-Hub-Signature-256` HMAC.
-- Approved message templates for any message outside the 24-hour customer-service window.
+## WhatsApp Business Platform (Cloud API) — built
 
-What it will (and won't) give us: inbound messages carry the sender's WhatsApp number and, for click-to-WhatsApp ad conversations, referral data (ad/source ids) on the first message. A person who taps the ad but never sends a message produces **no contact data** — those clicks stay as anonymous aggregate counts from Ads insights.
+1. In Meta Business Suite: a Business portfolio (verify it for higher limits), a WhatsApp Business Account, and a phone number registered on the Cloud API.
+2. In developers.facebook.com: an app with the WhatsApp product. Create a **system user** with `whatsapp_business_messaging` and `whatsapp_business_management` on the WABA and generate a **permanent token**.
+3. In LeadFlow → Integrations → WhatsApp: enter WABA ID, Phone number ID, token, **App secret** (App settings → Basic), API version (default v24.0). Save, then **Test connection** (reads the number's display name and quality rating).
+4. Copy the **Callback URL** and **Verify token** into the app's WhatsApp → Configuration → Webhook and subscribe to the **messages** field. Meta's verification GET must succeed.
+5. **Sync templates** to send approved templates outside the 24-hour window.
+6. A **queue worker must be running** — inbound messages and AI replies are processed on the queue.
 
-## Meta Marketing API
-- Ad account access in Business Manager for the system user.
-- App permission `ads_read` (insights, campaigns, ad sets, ads); `ads_management` only if Custom Audience upload is enabled (Phase 5).
-- Spend will be imported per campaign per day with currency and sync timestamp; manual spend for the same campaigns should then stop.
+Requirements for production: public HTTPS URL, valid certificate, the endpoint not behind authentication/WAF challenges.
 
-## Meta Lead Ads (Instant Forms)
-- Page access with `leads_retrieval`, `pages_show_list`, `pages_manage_metadata`; subscribe the Page to the `leadgen` webhook.
-- Leads will be ingested idempotently by leadgen id (already enforced by the unique `(organization_id, external_lead_id)` key).
+## OpenAI — built
 
-## Custom Audiences (Phase 5)
-Customer-list uploads require accepting Meta's Custom Audience terms, consent appropriate to your jurisdiction, SHA-256 hashing of normalized identifiers before upload, and exclusion of opted-out/suppressed contacts. Match rates and minimum audience sizes are decided by Meta and cannot be guaranteed.
+API key (a project key is recommended). Use **AI Assistant → Load models** to pick a chat model your account has. Embeddings (`text-embedding-3-small`) are used automatically for the knowledge base; after first connecting OpenAI, use *Re-process* on existing documents to add vectors.
+
+## DeepSeek — built
+
+API key from platform.deepseek.com. Default model `deepseek-v4-flash`. No embeddings: pair with OpenAI if you want semantic search.
+
+## Meta Marketing API (campaign & spend sync) / Lead Ads — not built yet
+
+Planned: `ads_read` for campaigns, ad sets, ads and daily spend; `leads_retrieval` + `leadgen` webhook for Instant Forms (leads will be keyed by leadgen id; the unique `(organization_id, external_lead_id)` index already guarantees idempotency). Until then, enter campaigns and daily spend manually; click-to-WhatsApp referrals link to campaigns automatically when the ad's ID is recorded on an ad under the campaign.
