@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['throttle:webhooks'])->prefix('webhooks')->group(function () {
                 Route::get('whatsapp/{key}', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->where('key', '[A-Za-z0-9]{40}');
                 Route::post('whatsapp/{key}', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive'])->where('key', '[A-Za-z0-9]{40}');
+                Route::get('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])->where('key', '[A-Za-z0-9]{40}');
+                Route::post('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'receive'])->where('key', '[A-Za-z0-9]{40}');
             });
         },
     )

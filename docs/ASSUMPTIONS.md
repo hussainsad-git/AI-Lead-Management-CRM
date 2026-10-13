@@ -18,3 +18,12 @@
 16. **WhatsApp profile name** is used as the contact name only when the contact has no name; it is user-supplied display text, not verified identity.
 17. **Interface translation** covers navigation, layout and the AI/WhatsApp/KB/analytics/profile/admin screens in Urdu and Arabic with RTL. Older CRM screens (lead table, imports, pipeline) still show English labels inside RTL layout; their strings can be added to `lang/*.json` and `public/js/i18n/*.js`.
 18. **Vector search** runs in PHP over stored float32 vectors; suitable up to ~8k chunks per business before moving to a vector database.
+
+## Phase 3 / Meta (this release)
+- Rules run at most once per (rule, event). If a business wants a reminder to repeat (e.g. every day a lead stays uncontacted), they add a second timed rule with a longer delay; we deliberately do not re-fire the same rule on the same lead.
+- Email is sent only when `MAIL_MAILER` is a real transport. With the default `log` mailer nothing is queued, and the profile page says so; preferences are still saved.
+- The first-contact assignment rule ships disabled: enabling automatic assignment on a business whose reps are not yet set up would create tasks nobody sees.
+- Meta spend is stored in the ad account currency as reported. CPL/CAC are only computed when that currency equals the organization currency; we do not convert.
+- Meta's insights for the last 3 days are re-fetched every hour because Meta restates attribution; "Reload 30 days" exists for larger corrections.
+- A Lead Ads submission whose phone is invalid for the organization's default country and that has no email is kept as a failed submission with the raw phone in the error, not as a contact.
+- Lead `created_at` for Instant Form leads is the Meta submission time, so SLA timers and cohort reports reflect when the person actually enquired.

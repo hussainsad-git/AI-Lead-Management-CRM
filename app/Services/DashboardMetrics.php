@@ -125,14 +125,14 @@ class DashboardMetrics
             return ['status' => 'restricted', 'message' => 'Advertising metrics are available to organization-wide reporting roles.'];
         }
         [$from, $to] = $range->localDates();
-        $spendQ = CampaignSpend::query()
+        $spendQ = CampaignSpend::query()->effective()
             ->when($from, fn ($q) => $q->whereBetween('spend_date', [$from, $to]));
         $foreign = (clone $spendQ)->where('currency', '!=', $currency)->count();
         $spendRows = (clone $spendQ)->where('currency', $currency);
         if (! (clone $spendRows)->exists()) {
             return [
                 'status' => 'unavailable',
-                'message' => 'No ad spend recorded for this period. Record spend on Campaigns (Meta sync arrives in Phase 4).',
+                'message' => 'No ad spend recorded for this period. Record spend on Campaigns or connect the Meta Marketing API on Integrations.',
                 'excluded_foreign_currency_rows' => $foreign,
             ];
         }

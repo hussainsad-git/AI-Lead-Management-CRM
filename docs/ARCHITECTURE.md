@@ -19,10 +19,12 @@ Eloquent models with BelongsToOrganization global scope  →  MySQL 8.4
    ▲
 Queue workers / scheduler (imports, KB ingestion, webhooks, AI replies, rescoring, missed follow-ups)
    ▲
-Provider adapters: WhatsApp CloudApiClient, ChatClient (OpenAI / DeepSeek, OpenAI-compatible) — each reports
+Provider adapters: WhatsApp CloudApiClient, MetaAdsClient (Marketing API + Lead Ads), ChatClient (OpenAI / DeepSeek) — each reports
 an honest connection state; nothing is marked "connected" without a successful authenticated call.
 AI layer: KnowledgeBase (hybrid BM25 + embeddings) → AiResponder (grounded JSON envelope) → ConversationAutomation
 (auto-replies, suggest/auto modes, human handoff) → LeadQualifier + LeadScoring. See docs/AI_WHATSAPP.md.
+Automation: domain services call AutomationEngine::fire(trigger, lead, eventId) after commit → RunAutomation job → ConditionEvaluator → actions;
+timed triggers (uncontacted / overdue / inactive) and Reminders run from `automation:scan` every 5 minutes. See docs/AUTOMATION.md.
 ```
 
 ### Decisions taken up front
@@ -69,7 +71,9 @@ contacts 1─* conversations 1─* messages (unique wamid) ; message_templates (
 ai_assistants (1 per business) · auto_reply_rules · kb_documents 1─* kb_chunks (search_text + packed vector)
 ai_interactions (every AI call: tokens, latency, outcome, feedback) · notifications (deduped per user)
 leads: + score, score_label, score_factors (JSON), ai_summary, language
-Later: automation_rules, automation_executions, audience_segments, audience_segment_memberships, audience_sync_jobs
+automation_rules 1─* automation_executions (unique (rule, dedupe_key) = exactly-once per event) · users.notification_prefs
+lead_forms 1─* lead_form_submissions (unique (org, external_lead_id); outcome per leadgen id) ; campaigns.ad_account_id, ad_sets/ads.status
+Later: audience_segments, audience_segment_memberships, audience_sync_jobs
 ```
 
 Deviations from the suggested table list, with reasons:
@@ -101,8 +105,8 @@ Conventions: UTC timestamps; display in organization/user time zone. Money is `D
 | 11 | Analytics & Reports | ✓ | reports.view |
 | 12 | Team & Assignments | 2 | users.manage |
 | 13 | Import / Export | 2 | imports.run / leads.export |
-| 14 | Integrations | status 2, adapters 4 | integrations.manage |
-| 15 | Automation Rules | 3 | automation.manage |
+| 14 | Integrations (WhatsApp, OpenAI, DeepSeek, Meta Marketing + Lead Ads) | ✓ | integrations.manage |
+| 15 | Automation Rules (builder, tester, execution history) | ✓ | automation.manage |
 | 16 | Audit Logs | 2 | audit.view |
 | 17 | Settings (org, statuses, sources, outcomes, roles) | 2 | settings.manage |
 
@@ -113,8 +117,8 @@ Modules from later phases appear in navigation with an explicit "planned for Pha
 - [x] **Phase 1 — Foundation:** project skeleton, migrations, Argon2id auth with throttling + session rotation, RBAC, org isolation, security headers/CSP, layout + reusable UI components.
 - [x] **Phase 2 — Core CRM** (37 automated tests passing; browser-verified): dashboard (real data, honest ad-metric states), contacts + leads, search/filters/saved views/column chooser, bulk actions, lead detail + timeline, Kanban + status rules, calls/follow-ups/appointments, CSV/XLSX import wizard with dry run + error report, safe exports, campaigns + manual spend, team/users, settings, audit log.
 - [x] **AI & WhatsApp release:** WhatsApp Cloud API (signed, idempotent webhooks; inbox; templates; 24h window; delivery statuses), OpenAI + DeepSeek assistant with knowledge base, instant auto-replies, suggest/auto modes with handoff, human-approved learning, lead qualification, transparent scoring, round-robin assignment, in-app notifications, analytics & reports, platform admin (multi-business), Urdu/Arabic UI with RTL, profile and business settings. 62 automated tests.
-- [~] **Phase 3 — Automation:** done: scheduler, in-app notifications, round-robin, lead scoring, missed follow-ups. Remaining: email notifications, SLA reminders/escalation rules, generic rule engine UI.
-- [~] **Phase 4 — Integrations:** done: WhatsApp Cloud API, OpenAI, DeepSeek. Remaining: Meta Marketing API spend sync, Lead Ads (Instant Forms).
+- [x] **Phase 3 — Automation:** rule engine (trigger → conditions → actions; exactly-once per event, loop guard, dry-run tester, execution history), five starter rules per business (first-contact assignment off by default; SLA, escalation, qualified alert, 3-unanswered-calls on), built-in callback/appointment reminders, email notifications with per-user preferences (sent only when a real mailer is configured), round-robin, scoring, missed follow-ups.
+- [x] **Phase 4 — Integrations:** WhatsApp Cloud API, OpenAI, DeepSeek, Meta Marketing API (campaign structure, daily spend with API-over-manual precedence, aggregate events) and Lead Ads (signed `leadgen` webhook + hourly backfill; exactly-once per leadgen id; no fabricated contacts). 76 automated tests.
 - [~] **Phase 5 — Marketing intelligence:** done: analytics & reports with CSV export. Remaining: audience segments, Custom Audience sync.
 - [ ] **Phase 6 — Production readiness:** security review, load/perf indexes review, error monitoring, backup drills, API tokens for external clients.
 

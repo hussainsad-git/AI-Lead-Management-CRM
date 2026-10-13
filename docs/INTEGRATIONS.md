@@ -21,6 +21,19 @@ API key (a project key is recommended). Use **AI Assistant → Load models** to 
 
 API key from platform.deepseek.com. Default model `deepseek-v4-flash`. No embeddings: pair with OpenAI if you want semantic search.
 
-## Meta Marketing API (campaign & spend sync) / Lead Ads — not built yet
+## Meta Marketing API (campaigns, spend) & Lead Ads (Instant Forms) — built
 
-Planned: `ads_read` for campaigns, ad sets, ads and daily spend; `leads_retrieval` + `leadgen` webhook for Instant Forms (leads will be keyed by leadgen id; the unique `(organization_id, external_lead_id)` index already guarantees idempotency). Until then, enter campaigns and daily spend manually; click-to-WhatsApp referrals link to campaigns automatically when the ad's ID is recorded on an ad under the campaign.
+**What it does.** Hourly (`meta:sync`) and on "Sync now": pulls campaigns, ad sets and ads of one ad account (keyed by Meta ids; a manually entered campaign with the same name is linked, not duplicated), daily campaign-level spend (`campaign_spend.data_source = meta_api`, in the ad account currency) and Meta-reported aggregate actions (`campaign_events`: messaging conversations started, link clicks, form leads — counts only, never people). Where an API row and a manual row exist for the same campaign and day, the API row wins (`CampaignSpend::effective()`), so switching from manual entry never double-counts. Spend in a currency other than the organization's is stored but excluded from CPL/CAC, and the card says so.
+
+**Lead Ads.** With a Page ID and "Create CRM leads from Instant Form submissions" enabled, each `leadgen` webhook (or the hourly backfill through `/{form_id}/leads`, which recovers missed deliveries) reads the submission from `GET /{leadgen_id}` and creates a lead: standard fields → contact (name, phone, email, city, company), custom questions and consent checkboxes → source notes, full attribution (campaign/ad set/ad ids and names, platform fb/ig, form id). The lead's `created_at` is the submission time. Exactly-once per leadgen id (`lead_form_submissions` unique key + `leads.external_lead_id`). A repeat submission by someone with an open lead is attached to that lead as a `form_submitted` timeline event. A submission without a usable phone (or email, when the organization allows email-only identifiers) is recorded as `no_contact`/`failed` with the reason — **no contact is ever fabricated**.
+
+**Setup (Meta side).**
+1. Business Manager → System Users → create a system user, assign the ad account (and the Page, for Lead Ads) to it, generate a token with `ads_read` (+ `leads_retrieval`, `pages_show_list`, `pages_read_engagement`, `pages_manage_ads`, `pages_manage_metadata` for Lead Ads). If the system user cannot be given the Page, paste a Page access token separately.
+2. Meta App → App settings → copy the **app secret** (webhook signatures).
+3. Save on *Integrations → Meta Marketing API & Lead Ads*, then **Test connection** — it reads `/me`, `/act_{id}` and the Page; only then is the card "Connected".
+4. Lead Ads: Meta App → Webhooks → **Page** → paste the callback URL and verify token shown on the card, subscribe to `leadgen`; then click **Subscribe Page to leadgen webhook** (POST `/{page_id}/subscribed_apps`). Use the Lead Ads Testing Tool to send a test lead.
+5. `leads_retrieval` needs Advanced Access (App Review) for Pages your app does not own; your own Pages work with Standard Access while the app is in development mode only for app roles — switch the app to Live for production.
+
+**Endpoints used.** `GET /me`, `GET /act_{id}`, `GET /act_{id}/campaigns|adsets|ads`, `GET /act_{id}/insights?level=campaign&time_increment=1`, `GET /{page_id}/leadgen_forms`, `GET /{form_id}/leads?filtering=[time_created ≥ …]`, `GET /{leadgen_id}`, `POST /{page_id}/subscribed_apps`. Errors are classified (190 expired token, 10/2xx permission, 4/17/32/613/8000x rate limit); auth errors mark the integration *Error* and notify admins once per hour; transient errors are retried by the queue with backoff.
+
+**Honesty rules.** Nothing is marked connected without a successful authenticated call. Spend shows its currency, range and last sync time. Attribution snapshots keep names as they were when the lead arrived. Anonymous clicks and conversation starts stay aggregate (`campaign_events`), separate from identified contacts.

@@ -95,10 +95,17 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 | GET `ai/learning`, POST `ai/learning/{id}/dismiss` | ai.manage | learning queue |
 | POST/PATCH/DELETE `ai/rules[/{id}]` | ai.manage | auto-reply rules |
 | GET/POST `kb/documents`, GET/PATCH/DELETE `kb/documents/{id}`, POST `kb/documents/{id}/reindex`, GET `kb/search?q=` | kb.manage (read: ai.manage) | multipart `file` or `{type: text\|faq, ...}` |
-| GET `integrations/status`, PUT `integrations/{whatsapp_cloud\|openai\|deepseek}`, POST `.../test`, POST `integrations/whatsapp_cloud/rotate-webhook \| verify-token \| templates/sync` | integrations.manage | secrets write-only |
+| GET `integrations/status`, PUT `integrations/{whatsapp_cloud\|openai\|deepseek\|meta_marketing}`, POST `.../test`, POST `integrations/{whatsapp_cloud\|meta_marketing}/rotate-webhook \| verify-token`, POST `integrations/whatsapp_cloud/templates/sync` | integrations.manage | secrets write-only |
+| POST `integrations/meta_marketing/sync {days?}`, POST `integrations/meta_marketing/subscribe-page` | integrations.manage | inline sync (campaigns, spend, events, Instant Form backfill); 422 `sync_failed` with the Graph error |
+| GET `automation/meta` | automation.manage | triggers, fields with options, operators, actions, pickers, placeholders |
+| GET/POST `automation/rules`, PATCH/DELETE `automation/rules/{id}` | automation.manage | `{name, description, trigger, delay_minutes, conditions:{match, rules:[{field, op, value}]}, actions:[{type, …}], is_active}`; PATCH with only `{is_active}` toggles |
+| POST `automation/rules/{id}/test {lead_id}` | automation.manage | dry run: per-condition pass/fail, `would_run`; never performs actions |
+| GET `automation/executions?rule_id&status&page` | automation.manage | execution history with per-action results |
+| PUT `profile/notifications {email:{type:bool}}` | any | per-type email preferences; `GET profile` returns `notifications.email_enabled` (false when MAIL_MAILER is log/array) |
 | GET `analytics`, GET `analytics/export?section=sources\|campaigns\|salespeople` | reports.view | same date/filters as dashboard + `source_id, user_id, campaign_id, platform` |
 | GET `notifications`, POST `notifications/read {ids?}` | any | own notifications |
 | GET/PATCH `profile`, POST `profile/password` | any | password change signs out other sessions |
 | PATCH `settings/business`, POST `settings/logo` | settings.manage | industry, colour, locale, hours, auto-assign, scoring weights |
 | GET `platform`, POST `platform/organizations`, PATCH `platform/organizations/{id}` | platform admin | counts only, no customer records |
 | GET/POST `/webhooks/whatsapp/{key}` | public, signature-verified | Meta verification + events |
+| GET/POST `/webhooks/meta/{key}` | public, signature-verified | Page `leadgen` webhook (Lead Ads) |

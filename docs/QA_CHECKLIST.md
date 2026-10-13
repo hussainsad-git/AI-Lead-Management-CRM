@@ -64,3 +64,18 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Analytics: numbers match the inbox for the same range; CSV exports open in Excel.
 - [ ] Profile → language اردو / العربية switches the interface to RTL.
 - [ ] Platform Admin: create a business, sign in as its admin, confirm none of the first business's data is visible.
+
+## Automation, notifications & Meta (manual checks with real credentials)
+- [ ] Automation Rules lists the five starter rules; "Assign new leads…" is off. Enable it, create a lead → it is assigned round-robin and a first-contact task appears; the rep is notified once.
+- [ ] Create a lead assigned to a rep and leave it uncontacted past the SLA → within 5 minutes the rep and the manager each get one "SLA missed" notification, and not again on the next scan.
+- [ ] Log three "No answer" calls in a row → owner gets the "try WhatsApp" prompt once; a fourth call does not repeat it.
+- [ ] Build a rule with two `move_stage` rules pointing at each other → execution history shows a `skipped` loop-guard entry, no infinite loop.
+- [ ] ▶ Test a rule against a lead → per-condition results; no execution is recorded.
+- [ ] Schedule a callback 10 minutes out → "Callback in … min" notification before it is due.
+- [ ] With `MAIL_MAILER=smtp`: an email arrives for a type that is on in Profile → Email notifications; switching it off stops emails; with the log mailer the profile page says mail is not configured.
+- [ ] Integrations → Meta: wrong token → card shows *Error* with the Graph message; correct token → *Connected* with account name, currency and time zone; the token never appears in the page source or network responses.
+- [ ] Sync now → Campaigns page shows the Meta campaigns with spend for the synced range; an existing manual campaign of the same name is linked (count unchanged); for a day with both manual and API spend, the API figure is used.
+- [ ] Ad account in another currency → yellow warning on the card and the dashboard shows CPL as unavailable.
+- [ ] Lead Ads Testing Tool → a test lead appears within seconds with source *Meta Instant Forms*, full campaign/ad set/ad attribution, form name in notes; re-sending the same test lead creates nothing new.
+- [ ] Stop the queue worker, submit a form, restart → the hourly backfill (or "Reload 30 days") creates the lead exactly once.
+- [ ] Submit a form with no phone/email → no contact is created; the card counts it under "without contact details".

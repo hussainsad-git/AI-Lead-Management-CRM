@@ -120,7 +120,9 @@ Route::get('kb/search', [V1\KnowledgeBaseController::class, 'search']);
 Route::put('integrations/{provider}', [V1\IntegrationController::class, 'update'])->middleware('throttle:sensitive');
 Route::post('integrations/{provider}/test', [V1\IntegrationController::class, 'test'])->middleware('throttle:sensitive');
 Route::post('integrations/{provider}/rotate-webhook', [V1\IntegrationController::class, 'rotateWebhook'])->middleware('throttle:sensitive');
-Route::post('integrations/whatsapp_cloud/verify-token', [V1\IntegrationController::class, 'revealVerifyToken'])->middleware('throttle:sensitive');
+Route::post('integrations/{provider}/verify-token', [V1\IntegrationController::class, 'revealVerifyToken'])->middleware('throttle:sensitive')->where('provider', 'whatsapp_cloud|meta_marketing');
+Route::post('integrations/meta_marketing/sync', [V1\IntegrationController::class, 'metaSync'])->middleware('throttle:sensitive');
+Route::post('integrations/meta_marketing/subscribe-page', [V1\IntegrationController::class, 'metaSubscribePage'])->middleware('throttle:sensitive');
 Route::post('integrations/whatsapp_cloud/templates/sync', [V1\IntegrationController::class, 'syncTemplates'])->middleware('throttle:sensitive');
 Route::get('whatsapp/templates', [V1\IntegrationController::class, 'templates']);
 

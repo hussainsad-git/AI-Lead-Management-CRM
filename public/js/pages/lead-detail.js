@@ -9,7 +9,7 @@
     follow_up_cancelled: ['x-circle', ''], appointment_scheduled: ['calendar-event', ''], appointment_completed: ['calendar-check', ''],
     appointment_cancelled: ['calendar-x', ''], appointment_no_show: ['calendar-x', 'tl-warn'], lead_updated: ['pencil', ''], contact_updated: ['pencil', ''],
     opt_out: ['slash-circle', 'tl-warn'], consent_granted: ['shield-check', ''], consent_withdrawn: ['shield-x', 'tl-warn'], archived: ['archive', 'tl-warn'],
-    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''], whatsapp_in: ['whatsapp', 'tl-call'], whatsapp_out: ['send', ''], ai_qualified: ['stars', 'tl-status'],
+    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''], whatsapp_in: ['whatsapp', 'tl-call'], whatsapp_out: ['send', ''], ai_qualified: ['stars', 'tl-status'], form_submitted: ['ui-checks', 'tl-call'],
   };
 
   function tlText(a) {
@@ -26,6 +26,7 @@
       case 'appointment_scheduled': return `${LF.esc(LF.fmt.label(m.type))} scheduled for ${LF.fmt.dateTime(m.starts_at)}`;
       case 'whatsapp_in': return `<i class="bi bi-whatsapp text-success"></i> ${LF.t('Customer message')}`;
       case 'whatsapp_out': return `${LF.t('WhatsApp reply')} <span class="text-muted">(${LF.esc(LF.fmt.label(m.sender || 'user'))})</span>`;
+      case 'form_submitted': return `${LF.t('Instant Form submitted again')}${m.form ? ': <strong>' + LF.esc(m.form) + '</strong>' : ''}`;
       case 'ai_qualified': return `${LF.t('AI captured')}: ` + Object.entries(m.filled || {}).map(([k, v]) => `${LF.esc(LF.fmt.label(k))} = <strong>${LF.esc(v)}</strong>`).join(', ');
       case 'lead_updated': case 'contact_updated': return 'Updated ' + Object.keys(m.changes || {}).map(k => LF.esc(LF.fmt.label(k.replace('contact.', '')))).join(', ');
       default: return LF.esc(LF.fmt.label(a.type));

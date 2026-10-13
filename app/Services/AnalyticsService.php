@@ -139,7 +139,7 @@ class AnalyticsService
         $leads = $this->leads($r, $f)->with('firstTouch:id,lead_id,campaign_id')->get();
         $cur = $this->org->require()->currency;
         [$from, $to] = $r->localDates();
-        $spend = CampaignSpend::where('currency', $cur)->when($from, fn ($q) => $q->whereBetween('spend_date', [$from, $to]))
+        $spend = CampaignSpend::effective()->where('currency', $cur)->when($from, fn ($q) => $q->whereBetween('spend_date', [$from, $to]))
             ->selectRaw('campaign_id, SUM(amount) as s')->groupBy('campaign_id')->pluck('s', 'campaign_id');
         $names = Campaign::pluck('name', 'id');
 

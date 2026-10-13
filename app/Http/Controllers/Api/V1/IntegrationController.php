@@ -9,6 +9,10 @@ use App\Models\WebhookEvent;
 use App\Services\Ai\AiException;
 use App\Services\Ai\ProviderRegistry;
 use App\Services\AuditLogger;
+use App\Services\Meta\LeadAdsService;
+use App\Services\Meta\MetaAdsClient;
+use App\Services\Meta\MetaException;
+use App\Services\Meta\MetaSyncService;
 use App\Services\WhatsApp\CloudApiClient;
 use App\Services\WhatsApp\MessagingService;
 use App\Services\WhatsApp\WhatsAppException;
@@ -25,6 +29,7 @@ class IntegrationController extends ApiController
         'whatsapp_cloud' => ['secrets' => ['access_token', 'app_secret', 'verify_token'], 'config' => ['waba_id', 'phone_number_id', 'api_version', 'business_id']],
         'openai' => ['secrets' => ['api_key'], 'config' => ['default_model', 'embedding_model', 'base_url']],
         'deepseek' => ['secrets' => ['api_key'], 'config' => ['default_model', 'base_url']],
+        'meta_marketing' => ['secrets' => ['access_token', 'app_secret', 'verify_token', 'page_access_token'], 'config' => ['ad_account_id', 'page_id', 'api_version', 'initial_days', 'lead_ads_enabled']],
     ];
 
     private function guard(): void
@@ -38,7 +43,7 @@ class IntegrationController extends ApiController
         $i = Integration::where('provider', $provider)->first();
         if (! $i && $create) {
             $i = Integration::create(['provider' => $provider, 'status' => 'not_configured', 'config' => [],
-                'webhook_key' => $provider === 'whatsapp_cloud' ? Str::random(40) : null]);
+                'webhook_key' => in_array($provider, ['whatsapp_cloud', 'meta_marketing'], true) ? Str::random(40) : null]);
         }
 
         return $i;
@@ -48,11 +53,7 @@ class IntegrationController extends ApiController
     {
         $this->guard();
 
-        return $this->ok(collect(array_keys(self::PROVIDERS))->map(fn ($p) => $this->present($p, $this->find($p)))->values()->all()
-            + [3 => [
-                'key' => 'meta_marketing', 'name' => 'Meta Marketing API (campaigns, spend)', 'status' => 'not_configured', 'available_in' => 'Phase 4b',
-                'requirements' => ['Ad account access in Business Manager', 'Meta app with ads_read', 'System-user token with access to the ad account'],
-            ]]);
+        return $this->ok(collect(array_keys(self::PROVIDERS))->map(fn ($p) => $this->present($p, $this->find($p)))->values()->all());
     }
 
     public function update(Request $request, string $provider, AuditLogger $audit)
@@ -70,8 +71,13 @@ class IntegrationController extends ApiController
         $rules['config.api_version'] = ['nullable', 'regex:/^v\d{2}\.\d$/'];
         $rules['config.phone_number_id'] = ['nullable', 'regex:/^\d{5,25}$/'];
         $rules['config.waba_id'] = ['nullable', 'regex:/^\d{5,25}$/'];
+        $rules['config.ad_account_id'] = ['nullable', 'regex:/^(act_)?\d{5,25}$/'];
+        $rules['config.page_id'] = ['nullable', 'regex:/^\d{5,25}$/'];
+        $rules['config.initial_days'] = ['nullable', 'integer', 'min:1', 'max:90'];
+        $rules['config.lead_ads_enabled'] = ['nullable', 'boolean'];
         $rules['enabled'] = ['sometimes', 'boolean'];
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, [], ['config.ad_account_id' => 'ad account ID', 'config.page_id' => 'Page ID', 'config.phone_number_id' => 'phone number ID',
+            'config.waba_id' => 'WhatsApp Business Account ID', 'config.api_version' => 'API version', 'config.initial_days' => 'days of spend']);
 
         $i = $this->find($provider, true);
         $config = array_merge($i->config ?? [], array_filter($data['config'] ?? [], fn ($v) => $v !== null));
@@ -88,7 +94,13 @@ class IntegrationController extends ApiController
                 $changedSecrets[] = $k;
             }
         }
-        if ($provider === 'whatsapp_cloud' && empty($creds['verify_token'])) {
+        if (isset($config['lead_ads_enabled'])) {
+            $config['lead_ads_enabled'] = filter_var($config['lead_ads_enabled'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (isset($config['ad_account_id'])) {
+            $config['ad_account_id'] = preg_replace('/\D/', '', (string) $config['ad_account_id']);
+        }
+        if (in_array($provider, ['whatsapp_cloud', 'meta_marketing'], true) && empty($creds['verify_token'])) {
             $creds['verify_token'] = Str::random(32);
         }
         $i->config = $config;
@@ -118,13 +130,22 @@ class IntegrationController extends ApiController
                 }
                 $detail = CloudApiClient::for($i)->verify();
                 $i->config = array_merge($i->config ?? [], ['display_phone_number' => $detail['display_phone_number'], 'verified_name' => $detail['verified_name']]);
+            } elseif ($provider === 'meta_marketing') {
+                $meta = MetaAdsClient::for($i);
+                if (! $meta->configured()) {
+                    throw new DomainRuleException('Ad account ID and access token are required.', 'not_configured');
+                }
+                $detail = $meta->verify();
+                $detail['page_name'] = $meta->verifyPage();
+                $i->config = array_merge($i->config ?? [], ['account_name' => $detail['account_name'], 'account_currency' => $detail['currency'],
+                    'account_timezone' => $detail['timezone'], 'page_name' => $detail['page_name']]);
             } else {
                 $client = $providers->client($provider) ?? throw new DomainRuleException('API key is required.', 'not_configured');
                 $models = $client->models();
                 $detail = ['models_available' => count($models)];
             }
             $i->forceFill(['status' => 'connected', 'verified_at' => now(), 'last_success_at' => now(), 'last_error' => null])->save();
-        } catch (WhatsAppException|AiException $e) {
+        } catch (WhatsAppException|AiException|MetaException $e) {
             $i->markError($e->getMessage());
             throw new DomainRuleException('Connection test failed: '.$e->getMessage(), 'connection_failed', 422);
         }
@@ -135,7 +156,7 @@ class IntegrationController extends ApiController
     public function rotateWebhook(string $provider, AuditLogger $audit)
     {
         $this->guard();
-        abort_unless($provider === 'whatsapp_cloud', 404);
+        abort_unless(in_array($provider, ['whatsapp_cloud', 'meta_marketing'], true), 404);
         $i = $this->find($provider, true);
         $creds = $i->credentials ?? [];
         $creds['verify_token'] = Str::random(32);
@@ -146,13 +167,49 @@ class IntegrationController extends ApiController
     }
 
     /** One-time reveal of the verify token so it can be pasted into Meta's webhook settings. */
-    public function revealVerifyToken(AuditLogger $audit)
+    public function revealVerifyToken(AuditLogger $audit, string $provider = 'whatsapp_cloud')
     {
         $this->guard();
-        $i = $this->find('whatsapp_cloud') ?? abort(404);
+        abort_unless(in_array($provider, ['whatsapp_cloud', 'meta_marketing'], true), 404);
+        $i = $this->find($provider) ?? abort(404);
         $audit->log('integration.verify_token_viewed', $i);
 
         return $this->ok(['verify_token' => $i->secret('verify_token')]);
+    }
+
+    /** Manual "Sync now": campaigns, spend and (if enabled) Instant Form leads. Runs inline so the admin sees the result. */
+    public function metaSync(Request $request, MetaSyncService $sync, LeadAdsService $leadAds)
+    {
+        $this->guard();
+        $i = $this->find('meta_marketing') ?? throw new DomainRuleException('Save the Meta credentials first.', 'not_configured');
+        $days = $request->integer('days') ?: null;
+        try {
+            $s = $sync->sync($i, $days ? min(90, max(1, $days)) : null);
+            if ($i->cfg('page_id') && $i->cfg('lead_ads_enabled')) {
+                $s['lead_ads'] = $leadAds->backfill($i, $days ? now()->subDays($days)->timestamp : now()->subDays(7)->timestamp);
+            }
+        } catch (MetaException $e) {
+            $i->markError($e->getMessage());
+            throw new DomainRuleException('Meta sync failed: '.$e->getMessage(), 'sync_failed', 422);
+        }
+
+        return $this->ok($s + ['integration' => $this->present('meta_marketing', $i->fresh())]);
+    }
+
+    public function metaSubscribePage(AuditLogger $audit)
+    {
+        $this->guard();
+        $i = $this->find('meta_marketing') ?? throw new DomainRuleException('Save the Meta credentials first.', 'not_configured');
+        try {
+            $ok = MetaAdsClient::for($i)->subscribePage();
+        } catch (MetaException $e) {
+            throw new DomainRuleException('Could not subscribe the Page: '.$e->getMessage(), 'subscribe_failed', 422);
+        }
+        $i->config = array_merge($i->config ?? [], ['page_subscribed_at' => now()->toIso8601ZuluString()]);
+        $i->save();
+        $audit->log('integration.page_subscribed', $i);
+
+        return $this->ok(['subscribed' => $ok, 'integration' => $this->present('meta_marketing', $i->fresh())]);
     }
 
     public function syncTemplates(MessagingService $messaging)
@@ -172,7 +229,7 @@ class IntegrationController extends ApiController
     private function present(string $provider, ?Integration $i): array
     {
         $spec = self::PROVIDERS[$provider];
-        $names = ['whatsapp_cloud' => 'WhatsApp Business Platform (Cloud API)', 'openai' => 'OpenAI', 'deepseek' => 'DeepSeek'];
+        $names = ['whatsapp_cloud' => 'WhatsApp Business Platform (Cloud API)', 'openai' => 'OpenAI', 'deepseek' => 'DeepSeek', 'meta_marketing' => 'Meta Marketing API & Lead Ads'];
         $out = [
             'key' => $provider, 'name' => $names[$provider], 'status' => $i?->status ?? 'not_configured',
             'config' => collect($spec['config'])->mapWithKeys(fn ($k) => [$k => $i?->cfg($k)])->all()
@@ -189,6 +246,22 @@ class IntegrationController extends ApiController
             $out['requirements'] = ['Meta Business portfolio and WhatsApp Business Account', 'Phone number registered on the Cloud API',
                 'Meta app permissions: whatsapp_business_messaging, whatsapp_business_management', 'Permanent system-user access token',
                 'App secret (to verify webhook signatures)', 'Subscribe the app to the "messages" webhook field using the URL and verify token below'];
+        } elseif ($provider === 'meta_marketing') {
+            $out['config'] += ['account_name' => $i?->cfg('account_name'), 'account_currency' => $i?->cfg('account_currency'), 'account_timezone' => $i?->cfg('account_timezone'),
+                'page_name' => $i?->cfg('page_name'), 'last_spend_sync_at' => $i?->cfg('last_spend_sync_at'), 'last_sync_range' => $i?->cfg('last_sync_range'),
+                'last_backfill_at' => $i?->cfg('last_backfill_at'), 'page_subscribed_at' => $i?->cfg('page_subscribed_at')];
+            $out['webhook_url'] = $i?->webhook_key ? url('/webhooks/meta/'.$i->webhook_key) : null;
+            $out['last_webhook_at'] = $i?->last_webhook_at?->toIso8601ZuluString();
+            $out['webhook_failures_24h'] = $i ? WebhookEvent::where('integration_id', $i->id)->where('status', 'failed')->where('created_at', '>', now()->subDay())->count() : 0;
+            $out['campaigns_synced'] = \App\Models\Campaign::where('data_source', 'meta_api')->count();
+            $out['forms'] = \App\Models\LeadForm::count();
+            $out['submissions'] = \App\Models\LeadFormSubmission::selectRaw('outcome, COUNT(*) as c')->groupBy('outcome')->pluck('c', 'outcome');
+            $out['currency_mismatch'] = $i?->cfg('account_currency') && $i->cfg('account_currency') !== app(\App\Support\Tenancy\CurrentOrganization::class)->require()->currency;
+            $out['requirements'] = ['Meta app (Business type) with Marketing API access; a System User in Business Manager with the ad account assigned',
+                'System-user token with ads_read (campaigns, spend). Spend is reported in the ad account currency and only counts in CRM metrics when it matches the organization currency',
+                'Lead Ads: leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_ads, pages_manage_metadata; the Page assigned to the system user (or a Page access token)',
+                'App secret (webhook signatures) and the webhook below subscribed to the Page "leadgen" field (Meta App → Webhooks → Page)',
+                'Advanced Access for leads_retrieval is required to receive leads from forms you do not own; standard access covers your own Pages'];
         } else {
             $out['requirements'] = $provider === 'openai'
                 ? ['API key from platform.openai.com (project key recommended)', 'Use "Load models" on the AI Assistant page to pick a chat model', 'Embeddings (semantic search) use text-embedding-3-small by default']

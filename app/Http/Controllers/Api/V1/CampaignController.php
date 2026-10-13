@@ -27,7 +27,7 @@ class CampaignController extends ApiController
                 DB::raw('SUM(CASE WHEN leads.qualified_at IS NOT NULL THEN 1 ELSE 0 END) as qualified'),
                 DB::raw('SUM(CASE WHEN leads.converted_at IS NOT NULL THEN 1 ELSE 0 END) as converted'))
             ->groupBy('campaign_id')->get()->keyBy('campaign_id');
-        $spend = CampaignSpend::whereIn('campaign_id', $ids)->select('campaign_id', 'currency', DB::raw('SUM(amount) as total'),
+        $spend = CampaignSpend::effective()->whereIn('campaign_id', $ids)->select('campaign_id', 'currency', DB::raw('SUM(amount) as total'),
             DB::raw('MIN(spend_date) as first_day'), DB::raw('MAX(spend_date) as last_day'))
             ->groupBy('campaign_id', 'currency')->get()->groupBy('campaign_id');
 
