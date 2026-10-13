@@ -258,6 +258,8 @@ class ImportService
             'skipped_count' => $unprocessed, 'error_count' => $job->rows()->where('action', 'error')->count() + (int) ($results['failed'] ?? 0),
             'review_count' => 0,
         ]);
+        app(\App\Services\NotificationService::class)->notify($actor->id, 'import_done', 'Import finished: '.$job->original_filename,
+            $job->created_count.' created · '.$job->updated_count.' updated · '.$job->error_count.' errors', '/imports', 'import:'.$job->id);
     }
 
     private function processRow(ImportRow $row, User $actor): void

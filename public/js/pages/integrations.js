@@ -4,7 +4,7 @@
   const BADGE = { connected: 'text-bg-success', error: 'text-bg-danger', disabled: 'text-bg-secondary', not_configured: 'text-bg-light border' };
   const FIELDS = {
     whatsapp_cloud: {
-      config: [['waba_id', t('WhatsApp Business Account ID')], ['phone_number_id', t('Phone number ID')], ['api_version', t('Graph API version'), 'v24.0']],
+      config: [['waba_id', t('WhatsApp Business Account ID')], ['phone_number_id', t('Phone number ID')], ['api_version', t('Graph API version'), 'v25.0']],
       secrets: [['access_token', t('Permanent access token (system user)')], ['app_secret', t('App secret')]],
     },
     openai: { config: [['embedding_model', t('Embedding model'), 'text-embedding-3-small'], ['base_url', t('Base URL (optional)'), 'https://api.openai.com/v1']], secrets: [['api_key', t('API key')]] },

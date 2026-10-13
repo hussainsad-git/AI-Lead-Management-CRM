@@ -34,7 +34,7 @@ return [
         'settings.manage' => ['admin', 'Manage organization settings, statuses, sources, outcomes'],
         'integrations.manage' => ['admin', 'Configure integrations'],
         'audit.view' => ['admin', 'View audit logs'],
-        'automation.manage' => ['admin', 'Manage automation rules (Phase 3)'],
+        'automation.manage' => ['admin', 'Manage automation rules'],
         'audiences.manage' => ['marketing', 'Manage audience segments and retargeting exports (Phase 5)'],
         'whatsapp.view' => ['whatsapp', 'View WhatsApp conversations (own/team/all per lead visibility)'],
         'whatsapp.send' => ['whatsapp', 'Send WhatsApp messages and use AI suggestions'],
@@ -120,5 +120,23 @@ return [
     'followups' => [
         // pending tasks this many hours past due become "missed" (scheduler job)
         'missed_after_hours' => (int) env('FOLLOWUP_MISSED_AFTER_HOURS', 24),
+    ],
+
+    /*
+    | Notification types. "email" is the default for users who haven't changed their preferences;
+    | in-app notifications are always on. Email is sent only when MAIL_MAILER is a real transport.
+    */
+    'notification_types' => [
+        'lead_assigned' => ['New lead assigned to me', true],
+        'whatsapp_in' => ['New WhatsApp message on my lead', false],
+        'handoff' => ['Customer asked for a human (AI handoff)', true],
+        'ai_suggestion' => ['AI drafted a reply for review', false],
+        'callback_due' => ['Callback / follow-up due in 15 minutes', true],
+        'appointment_soon' => ['Appointment within the hour', true],
+        'escalation' => ['Escalations (SLA missed, overdue follow-ups)', true],
+        'automation' => ['Automation rule alerts', false],
+        'import_done' => ['Import finished', false],
+        'integration_error' => ['Integration failure (admins)', true],
+        'audience_sync' => ['Audience sync result', false],
     ],
 ];

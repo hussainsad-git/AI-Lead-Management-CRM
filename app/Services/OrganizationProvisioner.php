@@ -67,6 +67,8 @@ class OrganizationProvisioner
                     'advances_to_semantic' => $advance, 'sort_order' => $i++,
                 ]);
             }
+
+            app(\App\Services\Automation\DefaultRules::class)->seed();
         });
     }
 }

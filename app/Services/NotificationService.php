@@ -15,11 +15,32 @@ class NotificationService
             return;
         }
         $orgId = app(\App\Support\Tenancy\CurrentOrganization::class)->id();
-        Notification::query()->insertOrIgnore([
+        $key = mb_substr($dedupeKey, 0, 191);
+        $inserted = Notification::query()->insertOrIgnore([
             'organization_id' => $orgId, 'user_id' => $id, 'type' => $type, 'title' => mb_substr($title, 0, 191),
-            'body' => $body ? mb_substr($body, 0, 500) : null, 'url' => $url, 'dedupe_key' => mb_substr($dedupeKey, 0, 191),
+            'body' => $body ? mb_substr($body, 0, 500) : null, 'url' => $url, 'dedupe_key' => $key,
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        if ($inserted && $orgId && self::wantsEmail($user instanceof User ? $user : User::find($id), $type)) {
+            $nid = Notification::where('user_id', $id)->where('dedupe_key', $key)->value('id');
+            \App\Jobs\SendNotificationEmail::dispatch($nid, $orgId)->afterCommit();
+        }
+    }
+
+    public static function emailEnabled(): bool
+    {
+        return ! in_array(config('mail.default'), ['log', 'array', null], true) || config('leadflow.mail_even_if_log', false);
+    }
+
+    /** User preference, falling back to the type's default. Never emails inactive users. */
+    public static function wantsEmail(?User $user, string $type): bool
+    {
+        if (! $user || ! $user->is_active || ! $user->email || ! self::emailEnabled()) {
+            return false;
+        }
+        $prefs = (array) ($user->notification_prefs['email'] ?? []);
+
+        return (bool) ($prefs[$type] ?? config("leadflow.notification_types.$type.1", false));
     }
 
     /** Managers of the user's team, or org admins when there is no team manager. */

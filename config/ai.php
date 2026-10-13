@@ -37,7 +37,7 @@ return [
 
     'whatsapp' => [
         'graph_url' => env('WHATSAPP_GRAPH_URL', 'https://graph.facebook.com'),
-        'default_api_version' => env('WHATSAPP_API_VERSION', 'v24.0'),
+        'default_api_version' => env('WHATSAPP_API_VERSION', 'v25.0'),
         'reply_debounce_seconds' => 4,
     ],
 

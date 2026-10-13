@@ -105,6 +105,7 @@ class FollowUpService
                 ]);
             }
             $this->refreshNextFollowUp($lead);
+            app(\App\Services\Automation\AutomationEngine::class)->fire('call.logged', $lead, 'task:'.$task->id, ['outcome_key' => $outcome->key, 'task_id' => $task->id]);
 
             return $task->fresh(['outcome', 'lead']);
         });

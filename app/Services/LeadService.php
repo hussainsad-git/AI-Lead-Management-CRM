@@ -161,6 +161,8 @@ class LeadService
                 }
             }
 
+            app(\App\Services\Automation\AutomationEngine::class)->fire('lead.created', $lead, 'lead:'.$lead->id);
+
             return $lead->fresh(['contact', 'status', 'source', 'assignee', 'tags', 'firstTouch']);
         });
     }

@@ -131,9 +131,19 @@ Route::get('notifications', [V1\NotificationController::class, 'index']);
 Route::post('notifications/read', [V1\NotificationController::class, 'read']);
 Route::get('profile', [V1\ProfileController::class, 'show']);
 Route::patch('profile', [V1\ProfileController::class, 'update']);
+Route::put('profile/notifications', [V1\ProfileController::class, 'notifications']);
 Route::post('profile/password', [V1\ProfileController::class, 'password'])->middleware('throttle:sensitive');
 Route::patch('settings/business', [V1\SettingsController::class, 'updateBusiness']);
 Route::post('settings/logo', [V1\SettingsController::class, 'uploadLogo'])->middleware('throttle:sensitive');
 Route::get('platform', [V1\PlatformAdminController::class, 'index']);
 Route::post('platform/organizations', [V1\PlatformAdminController::class, 'store'])->middleware('throttle:sensitive');
 Route::patch('platform/organizations/{organization}', [V1\PlatformAdminController::class, 'update'])->middleware('throttle:sensitive');
+
+// ----- automation rules -----
+Route::get('automation/meta', [V1\AutomationController::class, 'meta']);
+Route::get('automation/rules', [V1\AutomationController::class, 'index']);
+Route::post('automation/rules', [V1\AutomationController::class, 'store']);
+Route::patch('automation/rules/{rule}', [V1\AutomationController::class, 'update']);
+Route::delete('automation/rules/{rule}', [V1\AutomationController::class, 'destroy']);
+Route::post('automation/rules/{rule}/test', [V1\AutomationController::class, 'test']);
+Route::get('automation/executions', [V1\AutomationController::class, 'executions']);

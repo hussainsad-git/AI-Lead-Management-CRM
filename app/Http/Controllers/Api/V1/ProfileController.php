@@ -17,7 +17,23 @@ class ProfileController extends ApiController
 
         return $this->ok(['name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'timezone' => $u->getRawOriginal('timezone'),
             'locale' => $u->locale, 'roles' => $u->roles->pluck('name'), 'team' => $u->team?->name, 'locales' => config('locales'),
-            'timezones' => \DateTimeZone::listIdentifiers()]);
+            'timezones' => \DateTimeZone::listIdentifiers(),
+            'notifications' => [
+                'email_enabled' => \App\Services\NotificationService::emailEnabled(),
+                'types' => collect(config('leadflow.notification_types'))->map(fn ($t, $k) => ['key' => $k, 'label' => $t[0],
+                    'email' => (bool) ($u->notification_prefs['email'][$k] ?? $t[1])])->values(),
+            ]]);
+    }
+
+    public function notifications(Request $request)
+    {
+        $types = array_keys(config('leadflow.notification_types'));
+        $data = $request->validate(['email' => ['required', 'array'], 'email.*' => ['boolean']]);
+        $email = collect($data['email'])->only($types)->map(fn ($v) => (bool) $v)->all();
+        $u = $this->user();
+        $u->forceFill(['notification_prefs' => array_merge((array) $u->notification_prefs, ['email' => $email])])->save();
+
+        return $this->ok(['saved' => true]);
     }
 
     public function update(Request $request)

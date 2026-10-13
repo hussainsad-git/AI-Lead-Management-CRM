@@ -66,6 +66,10 @@ class ConsentService
             }
             $this->activity->forContact($contact->id, 'opt_out', 'Opted out ('.$channel.'): '.$reason, ['channel' => $channel]);
             $this->audit->log('contact.opt_out', $contact, [], ['channel' => $channel, 'reason' => $reason]);
+            if (! $existing) {
+                $engine = app(\App\Services\Automation\AutomationEngine::class);
+                $contact->leads()->whereNull('archived_at')->get()->each(fn ($l) => $engine->fire('lead.opted_out', $l, 'suppression:'.$suppression->id.':lead:'.$l->id, ['channel' => $channel]));
+            }
 
             return $suppression;
         });

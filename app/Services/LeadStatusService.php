@@ -64,10 +64,11 @@ class LeadStatusService
                     $fill['converted_at'] = null;
                 }
             }
+            $becameQualified = ! $lead->qualified_at && ! empty($fill['qualified_at']);
             $lead->forceFill($fill)->save();
             $lead->setRelation('status', $to);
 
-            LeadStatusHistory::create([
+            $history = LeadStatusHistory::create([
                 'lead_id' => $lead->id, 'from_status_id' => $from?->id, 'to_status_id' => $to->id,
                 'reason' => $reason, 'changed_by' => auth()->id(), 'changed_via' => $via,
             ]);
@@ -81,6 +82,12 @@ class LeadStatusService
             if (in_array($to->category, ['won', 'lost'], true)) {
                 $lead->callTasks()->where('status', 'pending')->update(['status' => 'cancelled', 'cancel_reason' => 'Lead closed', 'updated_at' => now()]);
                 $lead->forceFill(['next_follow_up_at' => null])->saveQuietly();
+            }
+
+            $engine = app(\App\Services\Automation\AutomationEngine::class);
+            $engine->fire('lead.status_changed', $lead, 'history:'.$history->id, ['from_status_id' => $from?->id, 'to_status_id' => $to->id, 'via' => $via]);
+            if ($becameQualified) {
+                $engine->fire('lead.qualified', $lead, 'lead:'.$lead->id);
             }
 
             return $lead;

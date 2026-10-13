@@ -18,7 +18,7 @@ return [
     ['team', 'Team & Assignments', 'people', '/team', ['users.manage'], null],
     ['imports', 'Import / Export', 'arrow-down-up', '/imports', ['imports.run', 'leads.export'], null],
     ['integrations', 'Integrations', 'plug', '/integrations', ['integrations.manage'], null],
-    ['automation', 'Automation Rules', 'lightning-charge', '/automation', ['automation.manage'], 3],
+    ['automation', 'Automation Rules', 'lightning-charge', '/automation', ['automation.manage'], null],
     ['audit', 'Audit Logs', 'shield-check', '/audit', ['audit.view'], null],
     ['settings', 'Settings', 'gear', '/settings', ['settings.manage', 'roles.manage'], null],
 ];

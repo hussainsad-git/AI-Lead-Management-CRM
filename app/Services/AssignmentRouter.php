@@ -13,12 +13,27 @@ class AssignmentRouter
 {
     public function __construct(private OrganizationSettings $settings) {}
 
+    /** Used for automatically captured WhatsApp leads when "auto assign" is enabled in settings. */
     public function next(): ?User
     {
         $cfg = (array) ($this->settings->get('auto_assign') ?? []);
         if (empty($cfg['enabled'])) {
             return null;
         }
+
+        return $this->pool($cfg);
+    }
+
+    /** Used by automation rules: an explicit team, else the configured pool, else sales reps. */
+    public function pick(?int $teamId = null): ?User
+    {
+        $cfg = (array) ($this->settings->get('auto_assign') ?? []);
+
+        return $this->pool($teamId ? ['team_id' => $teamId] : $cfg);
+    }
+
+    private function pool(array $cfg): ?User
+    {
         $q = User::query()->inCurrentOrganization()->where('is_active', true)->where('accepts_assignments', true);
         if (! empty($cfg['user_ids'])) {
             $q->whereIn('id', array_map('intval', $cfg['user_ids']));

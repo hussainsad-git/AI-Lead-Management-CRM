@@ -34,6 +34,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'accepts_assignments' => 'boolean',
             'is_platform_admin' => 'boolean',
+            'notification_prefs' => 'array',
         ];
     }
 

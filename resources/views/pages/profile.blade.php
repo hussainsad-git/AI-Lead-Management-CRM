@@ -20,6 +20,12 @@
         <div class="mb-2"><label class="form-label" for="pw-conf">{{ __('Confirm new password') }}</label><input class="form-control" type="password" id="pw-conf" name="password_confirmation" autocomplete="new-password" required></div>
         <button class="btn btn-primary" type="submit">{{ __('Change password') }}</button>
     </form></div>
+    <div class="card mt-3"><div class="card-header">{{ __('Email notifications') }}</div><form class="card-body" id="notifForm">
+        <div class="alert alert-warning small d-none" id="mailOff">{{ __('Email delivery is not configured on this server (MAIL_MAILER). Your choices are saved and apply once an administrator configures mail.') }}</div>
+        <div class="small text-muted mb-2">{{ __('In-app notifications are always on. Choose which ones are also emailed to you.') }}</div>
+        <div id="notifTypes"></div>
+        <button class="btn btn-outline-primary btn-sm mt-2" type="submit">{{ __('Save preferences') }}</button>
+    </form></div>
     <div class="card mt-3"><div class="card-header">{{ __('What you can do') }}</div><div class="card-body">
         @foreach(collect(config('leadflow.permissions'))->filter(fn ($v, $k) => auth()->user()->hasPermission($k)) as $key => [$group, $desc])
             <div class="small"><i class="bi bi-check2 text-success me-1"></i>{{ __($desc) }}</div>
