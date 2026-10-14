@@ -70,7 +70,79 @@
 
   function load() {
     LF.api('GET', 'integrations/status').then(r => { $('#intRoot').html(r.data.map(card).join('')); });
+    loadForms();
   }
+
+  // ----- website / landing-page form endpoints -----
+  let WF = { forms: [], sources: [], users: [], campaigns: [] };
+  function loadForms() {
+    LF.api('GET', 'web-forms').then(r => {
+      WF = r.data;
+      const $l = $('#webFormsList');
+      if (!WF.forms.length) { $l.html(`<div class="lf-empty py-3">${t('No form endpoints yet. Create one and paste the snippet into your website.')}</div>`); return; }
+      $l.html(`<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>${t('Name')}</th><th>${t('Source')}</th><th>${t('Origins')}</th><th>${t('Assign to')}</th><th class="text-end">${t('Leads')}</th><th>${t('Last 7 days')}</th><th>${t('Last submission')}</th><th></th></tr></thead><tbody>
+        ${WF.forms.map(f => `<tr class="${f.is_active ? '' : 'text-muted'}"><td><strong>${LF.esc(f.name)}</strong>${f.is_active ? '' : ` <span class="badge text-bg-secondary">${t('Inactive')}</span>`}</td><td>${LF.esc(f.source || '')}</td>
+          <td class="small">${f.allowed_origins.length ? f.allowed_origins.map(LF.esc).join('<br>') : `<span class="text-warning">${t('Any site')}</span>`}</td><td>${LF.esc(f.assignee || '—')}</td>
+          <td class="text-end">${f.submissions_count}</td><td class="small">${t('created')} ${f.last_7_days.created} · ${t('linked')} ${f.last_7_days.linked} · ${t('invalid')} ${f.last_7_days.invalid + f.last_7_days.rejected}</td>
+          <td class="small">${f.last_submission_at ? LF.fmt.rel(f.last_submission_at) : t('never')}</td>
+          <td class="text-end text-nowrap"><button class="btn btn-sm btn-light" type="button" data-wf-embed="${f.id}" title="${t('Embed & submissions')}"><i class="bi bi-code-slash"></i></button>
+            <button class="btn btn-sm btn-light" type="button" data-wf-edit="${f.id}" title="${t('Edit')}"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-light" type="button" data-wf-rotate="${f.id}" title="${t('Rotate key')}"><i class="bi bi-arrow-repeat"></i></button>
+            <button class="btn btn-sm btn-light text-danger" type="button" data-wf-delete="${f.id}" title="${t('Delete')}"><i class="bi bi-trash"></i></button></td></tr>`).join('')}
+      </tbody></table></div>`);
+    });
+  }
+  function fillSelect($s, rows, keep) {
+    const first = keep ? $s.find('option').first().prop('outerHTML') : '';
+    $s.html(first + rows.map(r => `<option value="${r.id}">${LF.esc(r.name)}</option>`).join(''));
+  }
+  function openForm(f) {
+    const $f = $('#webFormForm'); $f[0].reset(); $f.find('.is-invalid').removeClass('is-invalid');
+    fillSelect($('#wf-source'), WF.sources, false); fillSelect($('#wf-assignee'), WF.users, true); fillSelect($('#wf-campaign'), WF.campaigns, true);
+    $('#webFormModalTitle').text(f ? t('Edit form endpoint') : t('New form endpoint'));
+    $f.find('[name=id]').val(f ? f.id : '');
+    if (f) {
+      $('#wf-name').val(f.name); $('#wf-source').val(f.lead_source_id); $('#wf-assignee').val(f.assigned_user_id || ''); $('#wf-campaign').val(f.campaign_id || '');
+      $('#wf-origins').val(f.allowed_origins.join('\n')); $('#wf-redirect').val(f.redirect_url || ''); $('#wf-tags').val(f.tags.join(', '));
+    } else { $('#wf-source').val((WF.sources.find(s => s.key === 'website_form') || WF.sources[0] || {}).id); }
+    bootstrap.Modal.getOrCreateInstance('#webFormModal').show();
+  }
+  $(document).on('click', '[data-action="new-web-form"]', () => openForm(null));
+  $(document).on('click', '[data-wf-edit]', function () { openForm(WF.forms.find(f => f.id === $(this).data('wfEdit'))); });
+  $(document).on('submit', '#webFormForm', function (e) {
+    e.preventDefault();
+    const $f = $(this), d = LF.formData($f), id = d.id; delete d.id;
+    d.allowed_origins = (d.allowed_origins_text || '').split(/\s+/).map(x => x.trim()).filter(Boolean); delete d.allowed_origins_text;
+    d.tags = (d.tags_text || '').split(',').map(x => x.trim()).filter(Boolean); delete d.tags_text;
+    ['assigned_user_id', 'campaign_id', 'redirect_url'].forEach(k => { if (d[k] === '') d[k] = null; });
+    LF.api(id ? 'PATCH' : 'POST', id ? 'web-forms/' + id : 'web-forms', d, { form: $f }).then(r => {
+      bootstrap.Modal.getInstance('#webFormModal').hide(); LF.toast(t('Saved')); loadForms();
+      if (!id) showEmbed(r.data);
+    });
+  });
+  function showEmbed(f) {
+    $('#webFormEmbedTitle').text(f.name); $('#wfEndpoint').val(f.endpoint); $('#wfEmbed').val(f.embed_html);
+    $('#wfJsonExample').text(`fetch(${JSON.stringify(f.endpoint)}, {\n  method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },\n  body: JSON.stringify({ name, phone, email, message, consent_whatsapp: true, page_url: location.href,\n    utm_source, utm_medium, utm_campaign, fbclid })\n}).then(r => r.json()).then(j => j.ok ? showThanks() : showError(j.error.message));`);
+    $('#wfSubmissions').html(`<div class="lf-loading">${t('Loading…')}</div>`);
+    LF.api('GET', `web-forms/${f.id}/submissions`).then(r => {
+      if (!r.data.length) { $('#wfSubmissions').html(`<div class="text-muted">${t('Nothing received yet. Submit the form once to test it.')}</div>`); return; }
+      const B = { created: 'text-bg-success', linked: 'text-bg-primary', duplicate: 'text-bg-light border', invalid: 'text-bg-warning', rejected: 'text-bg-danger' };
+      $('#wfSubmissions').html(`<div class="table-responsive"><table class="table table-sm mb-0"><tbody>${r.data.map(s => `<tr><td class="text-nowrap">${LF.fmt.dateTime(s.at)}</td><td><span class="badge ${B[s.status] || 'text-bg-light border'}">${LF.esc(t(s.status))}</span></td>
+        <td>${s.lead_id ? `<a href="/leads/${s.lead_id}">#${s.lead_id}</a>` : ''}</td><td class="text-muted">${LF.esc(s.error || Object.entries(s.fields).slice(0, 4).map(([k, v]) => k + '=' + v).join(' · '))}</td></tr>`).join('')}</tbody></table></div>`);
+    });
+    bootstrap.Modal.getOrCreateInstance('#webFormEmbedModal').show();
+  }
+  $(document).on('click', '[data-wf-embed]', function () { showEmbed(WF.forms.find(f => f.id === $(this).data('wfEmbed'))); });
+  $(document).on('click', '[data-wf-rotate]', function () {
+    const id = $(this).data('wfRotate');
+    LF.confirm({ title: t('Rotate key?'), body: t('The current endpoint URL stops working immediately. Update the form on your website with the new URL.'), confirmText: t('Rotate') })
+      .then(() => LF.api('POST', `web-forms/${id}/rotate-key`).then(r => { loadForms(); showEmbed(r.data); }));
+  });
+  $(document).on('click', '[data-wf-delete]', function () {
+    const id = $(this).data('wfDelete'), f = WF.forms.find(x => x.id === id);
+    LF.confirm({ title: t('Delete form endpoint?'), body: `${f.name}: ${t('submissions stop immediately; leads already created are kept.')}`, confirmText: t('Delete'), danger: true })
+      .then(() => LF.api('DELETE', `web-forms/${id}`).then(() => { LF.toast(t('Deleted')); loadForms(); }));
+  });
   $(document).on('submit', '[data-int]', function (e) {
     e.preventDefault();
     const $f = $(this), key = $f.data('int'), d = LF.formData($f);

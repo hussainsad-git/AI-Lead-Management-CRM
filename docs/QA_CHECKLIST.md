@@ -115,3 +115,13 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Every input has a `<label for>`, `aria-label`, or placeholder (check Integrations' read-only token/URL fields).
 - [ ] Body text and muted text meet WCAG AA (≥ 4.5:1 normal, ≥ 3:1 large): dashboard notes, priority badges, Kanban counts, calendar other-month days, sidebar footer, WhatsApp empty state.
 - [ ] Modals trap focus and return it to the trigger on close; `Esc` closes.
+
+## Website form endpoints (Integrations)
+
+- [ ] Create an endpoint with your site origin; the embed modal opens with the endpoint URL and HTML snippet.
+- [ ] Paste the snippet on a test page on that origin, submit with a valid phone: lead appears with source "Website form", the message as the created note, tags applied, UTM/fbclid under attribution.
+- [ ] Submit the same phone again within 10 minutes: no second lead; status "duplicate" in Recent submissions. After 10 minutes with a new message: still one lead, a "Website form submitted again" timeline entry.
+- [ ] Submit from another origin (or with a wrong key): 403 / 404, nothing stored.
+- [ ] Fill the hidden `website` field: HTTP 200, nothing stored.
+- [ ] Rotate the key: old URL returns 404 immediately.
+- [ ] A Sales Representative cannot open `GET /api/v1/web-forms` (403).

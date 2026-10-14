@@ -39,6 +39,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 Route::get('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])->where('key', '[A-Za-z0-9]{40}');
                 Route::post('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'receive'])->where('key', '[A-Za-z0-9]{40}');
             });
+            // Public website/landing-page form capture: per-form key, origin allow-list, honeypot, tighter per-IP throttle.
+            Route::middleware(['throttle:forms'])->prefix('webhooks/forms')->group(function () {
+                Route::options('{key}', [\App\Http\Controllers\WebFormController::class, 'options'])->where('key', '[A-Za-z0-9]{40}');
+                Route::post('{key}', [\App\Http\Controllers\WebFormController::class, 'submit'])->where('key', '[A-Za-z0-9]{40}');
+            });
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

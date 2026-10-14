@@ -13,6 +13,10 @@ All credentials are entered in **Integrations** per business, encrypted with `AP
 
 Requirements for production: public HTTPS URL, valid certificate, the endpoint not behind authentication/WAF challenges.
 
+## Website & landing-page forms, Zapier, Make — built
+
+Form endpoints (`Integrations → Website & landing-page forms`) accept POSTs from your own site with an origin allow-list, honeypot and per-IP throttle, and create leads with UTM/fbclid attribution and consent records. Zapier/Make connect through the REST API with a personal bearer token (inbound) and the automation `call_webhook` action (outbound, HMAC-signed). Field names, payloads and verification snippets: `RECIPES.md`.
+
 ## OpenAI — built
 
 API key (a project key is recommended). Use **AI Assistant → Load models** to pick a chat model your account has. Embeddings (`text-embedding-3-small`) are used automatically for the knowledge base; after first connecting OpenAI, use *Re-process* on existing documents to add vectors.

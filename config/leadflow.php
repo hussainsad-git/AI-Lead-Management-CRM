@@ -128,6 +128,9 @@ return [
     | Notification types. "email" is the default for users who haven't changed their preferences;
     | in-app notifications are always on. Email is sent only when MAIL_MAILER is a real transport.
     */
+    // Raw website-form submissions are diagnostic only and pruned by model:prune after this many days.
+    'web_form_submission_retention_days' => 90,
+
     'notification_types' => [
         'lead_assigned' => ['New lead assigned to me', true],
         'whatsapp_in' => ['New WhatsApp message on my lead', false],

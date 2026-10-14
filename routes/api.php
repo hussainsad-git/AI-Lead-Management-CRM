@@ -127,6 +127,12 @@ Route::post('integrations/meta_marketing/sync', [V1\IntegrationController::class
 Route::post('integrations/meta_marketing/subscribe-page', [V1\IntegrationController::class, 'metaSubscribePage'])->middleware('throttle:sensitive');
 Route::post('integrations/whatsapp_cloud/templates/sync', [V1\IntegrationController::class, 'syncTemplates'])->middleware('throttle:sensitive');
 Route::get('whatsapp/templates', [V1\IntegrationController::class, 'templates']);
+Route::get('web-forms', [V1\WebFormController::class, 'index']);
+Route::post('web-forms', [V1\WebFormController::class, 'store'])->middleware('throttle:sensitive');
+Route::patch('web-forms/{form}', [V1\WebFormController::class, 'update']);
+Route::post('web-forms/{form}/rotate-key', [V1\WebFormController::class, 'rotate'])->middleware('throttle:sensitive');
+Route::delete('web-forms/{form}', [V1\WebFormController::class, 'destroy']);
+Route::get('web-forms/{form}/submissions', [V1\WebFormController::class, 'submissions']);
 
 // ----- analytics, notifications, profile, business settings, platform admin -----
 Route::get('analytics', [V1\AnalyticsController::class, 'index']);

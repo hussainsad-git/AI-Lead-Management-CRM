@@ -32,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(240)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('webhooks', fn (Request $r) => Limit::perMinute(1200)->by($r->ip()));
+        RateLimiter::for('forms', fn (Request $r) => Limit::perMinute(20)->by($r->ip()));
         RateLimiter::for('messaging', fn (Request $r) => Limit::perMinute(60)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('ai', fn (Request $r) => Limit::perMinute(30)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('sensitive', fn (Request $r) => Limit::perMinute(10)->by($r->user()?->id ?: $r->ip()));

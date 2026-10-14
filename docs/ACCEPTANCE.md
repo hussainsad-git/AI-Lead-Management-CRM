@@ -47,3 +47,7 @@ Scripted audit over 21 authenticated pages (admin) at 1366×900: 0 unlabeled but
 ## Redis drivers (v1.3, 2026-10-14)
 
 Suite and live smoke executed against Redis 7.0.15 with sessions, cache, queue and locks on Redis; details and the two defects it exposed (missing `uniqueFor` on unique jobs; per-process assumptions in the test harness) are in `docs/REDIS.md`. Scheduled commands now carry `onOneServer()`. CI gained a Redis leg.
+
+## Website form endpoints & integration recipes (v1.5, 2026-10-14)
+
+`WebFormTest` (7 tests, 81 assertions): lead creation with alias mapping, E.164 normalisation, budget parsing, tags, UTM/fbclid attribution and consent evidence; origin allow-list on Origin and Referer plus CORS preflight; silent honeypot; 422 field errors; 10-minute double-submit absorption; repeat inquiry appended to the open lead; 404 on unknown/rotated/inactive keys; permission and tenant scoping of the management API; 303 redirect for plain HTML posts. Browser run: endpoint created on Integrations, embed modal, a real JSON POST with Origin `https://example.com` → 201 and CORS header, a foreign origin → 403, submission listed with status and lead link, lead detail shows Instagram attribution and tags; no console errors.
