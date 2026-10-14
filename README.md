@@ -84,8 +84,9 @@ The first administrator created by `leadflow:install` is the platform administra
    ```
    On shared hosting without Supervisor, a cron fallback works: `* * * * * php artisan queue:work --stop-when-empty --max-time=55`.
    After each deploy: `php artisan queue:restart`.
-7. Translations: edit `lang/ur.json` / `lang/ar.json` (keys are the English strings) and run `php artisan i18n:build`; `php artisan i18n:build --check` and `I18nTest` catch untranslated strings.
-8. Upgrades: pull code → `composer install --no-dev -o` → `php artisan migrate --force` → re-cache config/routes/views → `php artisan queue:restart` → bump `ASSET_VERSION`.
+7. Release archives: `package.sh <version>` (ships runtime directory placeholders, excludes `.env`, caches, backups, uploads and the database). After unzipping on a server, `leadflow:install` also recreates any missing `storage/` directories.
+8. Translations: edit `lang/ur.json` / `lang/ar.json` (keys are the English strings) and run `php artisan i18n:build`; `php artisan i18n:build --check` and `I18nTest` catch untranslated strings.
+9. Upgrades: pull code → `composer install --no-dev -o` → `php artisan migrate --force` → re-cache config/routes/views → `php artisan queue:restart` → bump `ASSET_VERSION`.
 
 ## Backup and restore
 
