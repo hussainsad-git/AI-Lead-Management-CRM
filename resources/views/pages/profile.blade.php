@@ -26,6 +26,13 @@
         <div id="notifTypes"></div>
         <button class="btn btn-outline-primary btn-sm mt-2" type="submit">{{ __('Save preferences') }}</button>
     </form></div>
+    @if(auth()->user()->hasPermission('api.tokens'))
+    <div class="card mt-3"><div class="card-header d-flex align-items-center">{{ __('API tokens') }}<button class="btn btn-outline-primary btn-sm ms-auto" type="button" id="newToken"><i class="bi bi-key"></i> {{ __('New token') }}</button></div><div class="card-body">
+        <div class="small text-muted mb-2">{{ __('For Zapier, Make, your website or custom scripts. Send it as') }} <code>Authorization: Bearer …</code> {{ __('to the same /api/v1 endpoints (see docs/API.md in the install). A token has exactly your permissions and expires or can be revoked here.') }}</div>
+        <div id="tokenReveal" class="alert alert-success small d-none"></div>
+        <div id="tokenList"></div>
+    </div></div>
+    @endif
     <div class="card mt-3"><div class="card-header">{{ __('What you can do') }}</div><div class="card-body">
         @foreach(collect(config('leadflow.permissions'))->filter(fn ($v, $k) => auth()->user()->hasPermission($k)) as $key => [$group, $desc])
             <div class="small"><i class="bi bi-check2 text-success me-1"></i>{{ __($desc) }}</div>

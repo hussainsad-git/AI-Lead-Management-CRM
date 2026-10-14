@@ -16,6 +16,7 @@
       $('#o-tz').html(S.timezones.map(t => `<option ${t === o.timezone ? 'selected' : ''}>${LF.esc(t)}</option>`).join(''));
       LF.fillFromLookups($('#orgForm')).then(() => $('#o-country').val(o.default_country));
       $('#o-ident').val(st.required_identifier); $('#o-sla').val(st.first_contact_sla_minutes); $('#o-dup').prop('checked', !!st.allow_duplicate_open_leads);
+      $('#o-ret-archive').val(st.retention_archive_after_days || ''); $('#o-ret-wh').val(st.retention_purge_webhooks_days); $('#o-ret-notif').val(st.retention_purge_notifications_days); $('#o-ret-ai').val(st.retention_purge_ai_days); $('#o-ret-auto').val(st.retention_purge_automation_days);
       renderStatuses(); renderSources(); renderOutcomes(); renderBusiness();
     });
   }
@@ -111,6 +112,7 @@
     const $f = $(this), d = LF.formData($f);
     d.settings.allow_duplicate_open_leads = $('#o-dup').is(':checked');
     d.settings.first_contact_sla_minutes = parseInt(d.settings.first_contact_sla_minutes, 10);
+    ['retention_archive_after_days', 'retention_purge_webhooks_days', 'retention_purge_notifications_days', 'retention_purge_ai_days', 'retention_purge_automation_days'].forEach(k => { d.settings[k] = d.settings[k] === '' || d.settings[k] === null ? null : parseInt(d.settings[k], 10); });
     LF.api('PATCH', 'settings/organization', d, { form: $f }).then(() => { LF.toast('Organization settings saved'); LF.lookups(true); });
   });
 

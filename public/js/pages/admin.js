@@ -11,6 +11,11 @@
         card(t('Failed jobs'), s.jobs_failed, s.jobs_failed > 0), card(t('Webhooks 24h'), `${s.webhooks_24h} · ${s.webhooks_failed_24h} ${t('failed')}`, s.webhooks_failed_24h > 0),
         card('HTTPS / secure cookie', `${s.https ? '✓' : '✗'} / ${s.session_secure ? '✓' : '✗'}`, !s.https || !s.session_secure),
       ].join('') + (s.oldest_pending_job_min > 5 ? `<div class="col-12"><div class="alert alert-warning py-2 small mb-0">${t('Jobs have been waiting')} ${s.oldest_pending_job_min} ${t('min — is the queue worker running?')}</div></div>` : ''));
+      const checks = r.data.checks || [], ICON = { ok: 'check-circle-fill text-success', warn: 'exclamation-triangle-fill text-warning', fail: 'x-circle-fill text-danger' };
+      const fails = checks.filter(c => c.status === 'fail').length, warns = checks.filter(c => c.status === 'warn').length;
+      $('#doctorSummary').html(`<span class="badge ${fails ? 'text-bg-danger' : (warns ? 'text-bg-warning' : 'text-bg-success')}">${fails ? fails + ' ' + t('failing') : (warns ? warns + ' ' + t('warnings') : t('all good'))}</span>`);
+      $('#doctorList').html(checks.map(c => `<li class="list-group-item d-flex gap-2 py-1"><i class="bi bi-${ICON[c.status]}"></i><span class="fw-semibold">${LF.esc(c.name)}</span><span class="text-muted text-wrap">${LF.esc(c.detail)}</span></li>`).join('')
+        + (r.data.last_error ? `<li class="list-group-item small text-danger">${t('Last error')}: ${LF.esc(r.data.last_error.class)} — ${LF.esc(r.data.last_error.message)} (${LF.fmt.rel(r.data.last_error.at)})</li>` : ''));
       $('#o2-ind').html(r.data.industries.map(i => `<option value="${i.key}">${LF.esc(i.label)}</option>`).join(''));
       $('#orgBody').html(r.data.organizations.map(o => `<tr><td><strong>${LF.esc(o.name)}</strong><div class="cell-muted">${LF.esc(o.timezone)} · ${LF.esc(o.currency)} · ${LF.fmt.date(o.created_at)}</div></td>
         <td>${LF.esc(o.industry || '—')}</td><td class="text-end">${o.users}</td><td class="text-end">${LF.fmt.num(o.leads)}</td><td class="text-end">${LF.fmt.num(o.conversations)}</td>

@@ -32,6 +32,7 @@ Route::get('contacts/{contact}', [V1\ContactController::class, 'show']);
 Route::patch('contacts/{contact}', [V1\ContactController::class, 'update']);
 Route::get('contacts/{contact}/duplicates', [V1\ContactController::class, 'duplicates']);
 Route::post('contacts/{contact}/merge', [V1\ContactController::class, 'merge'])->middleware('throttle:sensitive');
+Route::post('contacts/{contact}/erase', [V1\ContactController::class, 'erase'])->middleware('throttle:sensitive');
 Route::post('contacts/{contact}/consents', [V1\ContactController::class, 'recordConsent']);
 Route::post('contacts/{contact}/opt-out', [V1\ContactController::class, 'optOut']);
 Route::post('suppressions/{suppression}/lift', [V1\ContactController::class, 'liftSuppression'])->middleware('throttle:sensitive');
@@ -163,3 +164,8 @@ Route::delete('audiences/{segment}', [V1\AudienceController::class, 'destroy']);
 Route::post('audiences/{segment}/refresh', [V1\AudienceController::class, 'refresh']);
 Route::get('audiences/{segment}/export', [V1\AudienceController::class, 'export'])->middleware('throttle:sensitive');
 Route::post('audiences/{segment}/sync', [V1\AudienceController::class, 'sync'])->middleware('throttle:sensitive');
+
+// ----- personal API tokens (browser session only) -----
+Route::get('api-tokens', [V1\ApiTokenController::class, 'index']);
+Route::post('api-tokens', [V1\ApiTokenController::class, 'store'])->middleware('throttle:sensitive');
+Route::delete('api-tokens/{token}', [V1\ApiTokenController::class, 'destroy']);

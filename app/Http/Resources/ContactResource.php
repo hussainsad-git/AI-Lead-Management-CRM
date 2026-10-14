@@ -26,6 +26,7 @@ class ContactResource extends JsonResource
             'preferred_contact_method' => $this->preferred_contact_method,
             'do_not_contact' => $this->do_not_contact,
             'merged_into_id' => $this->merged_into_id,
+            'erased_at' => $this->erased_at?->toIso8601ZuluString(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
     }

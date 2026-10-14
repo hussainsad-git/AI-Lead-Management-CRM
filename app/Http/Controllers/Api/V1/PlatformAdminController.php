@@ -52,6 +52,8 @@ class PlatformAdminController extends ApiController
                 'webhooks_24h' => DB::table('webhook_events')->where('created_at', '>', now()->subDay())->count(),
                 'https' => str_starts_with((string) config('app.url'), 'https://'), 'session_secure' => (bool) config('session.secure'),
             ],
+            'checks' => \App\Console\Commands\Doctor::checks(),
+            'last_error' => \App\Support\Ops\ErrorMonitor::last(),
             'industries' => collect(config('ai.industries'))->map(fn ($v, $k) => ['key' => $k, 'label' => $v['label']])->values(),
         ]);
     }

@@ -88,19 +88,21 @@ The first administrator created by `leadflow:install` is the platform administra
 
 ## Backup and restore
 
-What to back up: the MySQL database (all CRM data, audit log, consent ledger), `storage/app/private/imports` (original uploaded spreadsheets — optional, retained for audit), and `.env` (store separately and encrypted; it holds `APP_KEY`, which encrypts sessions and, from Phase 4, integration secrets — **losing it makes encrypted values unrecoverable**).
+`php artisan leadflow:backup` (scheduled nightly at 01:30) writes `storage/app/private/backups/leadflow-<timestamp>.zip` containing `db/database.sql` (mysqldump with `--single-transaction`, credentials passed via the environment, never the command line) plus `files/` (uploaded spreadsheets, logos, knowledge-base documents) and a `MANIFEST.json`. The newest `BACKUP_KEEP` (default 14) archives are kept. **Copy the archives off the server** (rclone/scp to object storage) — a backup on the same disk is not a backup. `.env` is deliberately not included: it holds `APP_KEY`, which encrypts integration secrets; keep it in your secrets manager. Losing `APP_KEY` makes stored tokens unrecoverable (re-enter them on Integrations).
 
+Restore into an empty database:
 ```bash
-# nightly (cron) — consistent InnoDB snapshot, compressed, 14-day retention
-mysqldump --single-transaction --routines --triggers -u leadflow -p leadflow | gzip > /backups/leadflow-$(date +%F).sql.gz
-find /backups -name 'leadflow-*.sql.gz' -mtime +14 -delete
-
-# restore into an empty database
-gunzip < /backups/leadflow-2026-10-12.sql.gz | mysql -u leadflow -p leadflow
-php artisan migrate --force   # applies any migrations newer than the backup
+unzip leadflow-20261014-013000.zip -d /tmp/restore
+mysql -u leadflow -p leadflow < /tmp/restore/db/database.sql
+rsync -a /tmp/restore/files/ /var/www/leadflow/storage/app/private/
+php artisan migrate --force          # applies migrations newer than the backup
+php artisan leadflow:doctor          # confirm services
 ```
+Do a restore drill into a scratch database before go-live and after major upgrades. The `docs/DEPLOYMENT.md` go-live checklist includes it.
 
-Copy backups off-server (S3/Backblaze/another host) and test a restore at least quarterly. Personal data in backups is subject to the same retention policy as the live database.
+## Production readiness
+
+`php artisan leadflow:doctor` (also shown on Platform Admin) checks environment, debug, keys, HTTPS, cookies, DB, migrations, queue worker and scheduler heartbeats, failed jobs, mail, cache, writable paths, PHP extensions, last error and latest backup. It exits non-zero on any FAIL so it can gate deployments. See `docs/DEPLOYMENT.md` (web server configs, go-live checklist) and `docs/SECURITY.md` (controls and review notes).
 
 ## Security notes
 

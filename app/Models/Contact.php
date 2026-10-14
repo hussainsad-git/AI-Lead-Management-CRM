@@ -12,7 +12,7 @@ class Contact extends TenantModel
 
     protected function casts(): array
     {
-        return ['do_not_contact' => 'boolean'];
+        return ['do_not_contact' => 'boolean', 'erased_at' => 'datetime'];
     }
 
     public function leads(): HasMany

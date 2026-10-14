@@ -18,8 +18,17 @@
             <div class="col-md-3"><label class="form-label" for="o-cur">Default currency</label><input class="form-control" id="o-cur" name="currency" maxlength="3"></div>
             <div class="col-md-3"><label class="form-label" for="o-country">Default phone country</label><select class="form-select" id="o-country" name="default_country" data-fill="regions"></select></div>
             <div class="col-md-6"><label class="form-label" for="o-ident">Required contact identifier</label><select class="form-select" id="o-ident" name="settings[required_identifier]"><option value="phone_or_whatsapp">A valid phone or WhatsApp number</option><option value="any">Phone, WhatsApp or email</option></select></div>
-            <div class="col-md-6"><label class="form-label" for="o-sla">First-contact target (minutes)</label><input class="form-control" type="number" min="5" max="10080" id="o-sla" name="settings[first_contact_sla_minutes]"><div class="form-text">Used by SLA reminders in Phase 3.</div></div>
+            <div class="col-md-6"><label class="form-label" for="o-sla">First-contact target (minutes)</label><input class="form-control" type="number" min="5" max="10080" id="o-sla" name="settings[first_contact_sla_minutes]"><div class="form-text">Used by the "First-contact SLA missed" automation rule.</div></div>
             <div class="col-md-6 align-self-end"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="o-dup" name="settings[allow_duplicate_open_leads]" value="1"><label class="form-check-label" for="o-dup">Allow more than one open lead per contact without confirmation</label></div></div>
+        </div>
+        <h3 class="fs-6 mt-4 mb-2">Data retention</h3>
+        <div class="row g-3">
+            <div class="col-md-4"><label class="form-label" for="o-ret-archive">Archive closed leads after (days)</label><input class="form-control" type="number" min="30" max="3650" id="o-ret-archive" name="settings[retention_archive_after_days]" placeholder="never"><div class="form-text">Won/lost leads older than this are archived (hidden from lists, kept for reports). Leave empty to keep forever.</div></div>
+            <div class="col-md-2"><label class="form-label" for="o-ret-wh">Webhook payloads (days)</label><input class="form-control" type="number" min="7" max="365" id="o-ret-wh" name="settings[retention_purge_webhooks_days]"></div>
+            <div class="col-md-2"><label class="form-label" for="o-ret-notif">Notifications (days)</label><input class="form-control" type="number" min="7" max="365" id="o-ret-notif" name="settings[retention_purge_notifications_days]"></div>
+            <div class="col-md-2"><label class="form-label" for="o-ret-ai">AI transcripts (days)</label><input class="form-control" type="number" min="30" max="730" id="o-ret-ai" name="settings[retention_purge_ai_days]"></div>
+            <div class="col-md-2"><label class="form-label" for="o-ret-auto">Automation history (days)</label><input class="form-control" type="number" min="30" max="730" id="o-ret-auto" name="settings[retention_purge_automation_days]"></div>
+            <div class="col-12 form-text">Runs nightly. Retention is housekeeping, not legal erasure — to erase a person's data use "Erase personal data" on the contact page, which is audited and keeps only the opt-out hash.</div>
         </div>
         <div class="mt-3"><button class="btn btn-primary" type="submit">Save organization settings</button></div>
     </form></div></div>

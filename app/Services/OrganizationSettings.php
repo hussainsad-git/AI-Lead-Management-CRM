@@ -12,7 +12,11 @@ class OrganizationSettings
         'required_identifier' => 'phone_or_whatsapp', // phone_or_whatsapp | any
         'allow_duplicate_open_leads' => false,
         'first_contact_sla_minutes' => 30,
-        'retention_archive_after_days' => null,
+        'retention_archive_after_days' => null,   // archive leads closed (won/lost) for this long; null = never
+        'retention_purge_webhooks_days' => 30,    // delete processed webhook payloads
+        'retention_purge_notifications_days' => 90,
+        'retention_purge_ai_days' => 180,         // delete AI interaction prompts/outputs (metrics rows stay)
+        'retention_purge_automation_days' => 180, // delete automation execution history
     ];
 
     /** @var array<int, array> cache keyed by organization id */

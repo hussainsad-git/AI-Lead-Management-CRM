@@ -40,6 +40,8 @@ return [
         'whatsapp.send' => ['whatsapp', 'Send WhatsApp messages and use AI suggestions'],
         'ai.manage' => ['ai', 'Configure the AI assistant, prompts, auto-replies and review AI learning'],
         'kb.manage' => ['ai', 'Manage the knowledge base and teach the assistant'],
+        'contacts.erase' => ['contacts', 'Permanently erase a contact\'s personal data (irreversible, audited)'],
+        'api.tokens' => ['admin', 'Create personal API tokens for external integrations'],
     ],
 
     'roles' => [
@@ -56,7 +58,7 @@ return [
         ]],
         'marketing_manager' => ['Marketing Manager', 'Campaigns, audiences and reporting', [
             'dashboard.view', 'leads.view_all', 'contacts.view', 'campaigns.view', 'campaigns.manage', 'imports.run',
-            'reports.view', 'leads.export', 'audiences.manage', 'ai.manage', 'kb.manage', 'whatsapp.view',
+            'reports.view', 'leads.export', 'audiences.manage', 'ai.manage', 'kb.manage', 'whatsapp.view', 'api.tokens',
         ]],
         'analyst' => ['Read-Only Analyst', 'Aggregated reporting only, no lead PII', [
             'dashboard.view', 'reports.view', 'campaigns.view',
@@ -139,4 +141,8 @@ return [
         'integration_error' => ['Integration failure (admins)', true],
         'audience_sync' => ['Audience sync result', false],
     ],
+
+    // Optional: POST a small JSON summary of each new error fingerprint (no payloads/secrets) to an external monitor.
+    'error_webhook_url' => env('ERROR_WEBHOOK_URL'),
+    'backup_keep' => (int) env('BACKUP_KEEP', 14),
 ];

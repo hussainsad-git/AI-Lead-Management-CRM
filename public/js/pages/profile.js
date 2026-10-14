@@ -18,6 +18,26 @@
       if (($('#p-locale').val() || before) !== before) setTimeout(() => location.reload(), 600);
     });
   });
+  function loadTokens() {
+    if (!$('#tokenList').length) return;
+    LF.api('GET', 'api-tokens').then(r => {
+      $('#tokenList').html(r.data.length ? `<table class="table table-sm small mb-0"><thead><tr><th>${t('Name')}</th><th>${t('Token')}</th><th>${t('Last used')}</th><th>${t('Expires')}</th><th></th></tr></thead><tbody>` + r.data.map(x => `<tr><td>${LF.esc(x.name)}</td><td><code>${LF.esc(x.prefix)}</code></td><td>${x.last_used_at ? LF.fmt.rel(x.last_used_at) + (x.last_used_ip ? ' · ' + LF.esc(x.last_used_ip) : '') : t('never')}</td><td>${x.expires_at ? LF.fmt.date(x.expires_at) : t('never')}</td><td class="text-end"><button class="btn btn-sm btn-link text-danger p-0" data-revoke="${x.id}">${t('Revoke')}</button></td></tr>`).join('') + '</tbody></table>'
+        : `<div class="small text-muted">${t('No active tokens.')}</div>`);
+    });
+  }
+  $('#newToken').on('click', () => {
+    LF.confirm({ title: t('New API token'), reason: true, reasonRequired: true, reasonLabel: t('Name (what will use it?)'), confirmText: t('Create') }).then(name =>
+      LF.api('POST', 'api-tokens', { name, expires_in_days: 365 }).then(r => {
+        $('#tokenReveal').removeClass('d-none').html(`<div class="fw-semibold mb-1">${t('Copy your token now — it will not be shown again.')}</div><div class="input-group input-group-sm"><input class="form-control font-monospace" readonly id="tokPlain" value="${LF.esc(r.data.token)}"><button class="btn btn-light" type="button" data-copy="#tokPlain">${t('Copy')}</button></div><div class="text-muted mt-1">${t('Expires in 365 days.')}</div>`);
+        loadTokens();
+      }));
+  });
+  $(document).on('click', '[data-copy]', function () { const v = $($(this).data('copy')).val(); navigator.clipboard && navigator.clipboard.writeText(v).then(() => LF.toast(t('Copied'))); });
+  $(document).on('click', '[data-revoke]', function () {
+    const id = $(this).data('revoke');
+    LF.confirm({ title: t('Revoke token?'), body: t('Anything using it stops working immediately.'), danger: true, confirmText: t('Revoke') }).then(() => LF.api('DELETE', 'api-tokens/' + id).then(() => { $('#tokenReveal').addClass('d-none'); loadTokens(); }));
+  });
+  loadTokens();
   $('#notifForm').on('submit', function (e) {
     e.preventDefault();
     const email = {};

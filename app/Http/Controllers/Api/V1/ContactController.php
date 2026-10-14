@@ -205,6 +205,16 @@ class ContactController extends ApiController
         return $this->ok($consent->summary($contact->fresh()));
     }
 
+    /** Irreversible legal erasure. Requires an explicit reason; audited. */
+    public function erase(Request $request, Contact $contact, \App\Services\ContactErasureService $erasure)
+    {
+        abort_unless($this->user()->hasPermission('contacts.erase'), 403);
+        abort_if($request->attributes->get('api_token') !== null, 403, 'Erasure is only available from the web app.');
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500'], 'confirm' => ['required', 'in:ERASE']]);
+
+        return $this->ok($erasure->erase($contact, $data['reason']) + ['erased' => true]);
+    }
+
     public function liftSuppression(Request $request, SuppressionRecord $suppression, ConsentService $consent)
     {
         abort_unless($this->user()->hasPermission('consent.manage') && $this->user()->hasAnyPermission('contacts.merge', 'settings.manage'), 403);

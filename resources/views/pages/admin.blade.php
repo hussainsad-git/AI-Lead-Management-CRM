@@ -4,6 +4,7 @@
 <div class="lf-page-head"><h1>{{ __('Platform Admin') }}</h1><div class="lf-actions"><button class="btn btn-primary btn-sm" id="newOrg"><i class="bi bi-plus-lg"></i> {{ __('New business') }}</button></div></div>
 <p class="small text-muted">{{ __('Each business is an isolated workspace with its own users, leads, WhatsApp number, AI assistant and knowledge base. This page shows usage counts only — not customer records.') }}</p>
 <div class="row g-2 mb-3" id="sysCards"></div>
+<div class="card mb-3"><div class="card-header d-flex align-items-center">{{ __('Production readiness') }} <span class="small text-muted ms-2">php artisan leadflow:doctor</span><span class="ms-auto" id="doctorSummary"></span></div><div class="card-body p-0"><ul class="list-group list-group-flush small" id="doctorList"></ul></div></div>
 <div class="card"><div class="card-header">{{ __('Businesses') }}</div><div class="table-wrap"><table class="table align-middle table-dense"><thead><tr>
     <th>{{ __('Business') }}</th><th>{{ __('Industry') }}</th><th class="text-end">{{ __('Users') }}</th><th class="text-end">{{ __('Leads') }}</th><th class="text-end">{{ __('Conversations') }}</th>
     <th class="text-end">{{ __('Messages 30d') }}</th><th class="text-end">{{ __('AI calls 30d') }}</th><th>{{ __('Connected') }}</th><th>{{ __('Status') }}</th><th></th></tr></thead><tbody id="orgBody"></tbody></table></div></div>

@@ -91,3 +91,12 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Opt someone out, sync again → Meta audience is replaced without them (check `uploaded` dropped by one).
 - [ ] Token without ads_management or terms not accepted → job fails with Meta's reason; nothing marked synced; admin notified.
 - [ ] Lead timeline shows "Added to audience" / "Left audience" events after recounts.
+
+## Production readiness
+- [ ] `php artisan leadflow:doctor` on the production server exits 0; Platform Admin shows the same checks with worker and scheduler heartbeats green.
+- [ ] Create an API token on My profile, call `GET /api/v1/leads` with curl and a bearer header → 200; revoke → 401; a wrong token → 401 and never a stack trace.
+- [ ] Erase a test contact → name/phone/email gone from the contact page, lead list search, WhatsApp inbox and exports; audit log entry present; a new inbound message from the same number is suppressed.
+- [ ] Set "Archive closed leads after" to 30 days on a business with old won/lost leads → `php artisan leadflow:retention --dry-run` lists them; the real run archives them and logs `retention.applied`.
+- [ ] `php artisan leadflow:backup` produces a zip; restore it into a scratch database following README → Backup and restore; the app boots against it.
+- [ ] Trigger an error (e.g. temporarily wrong DB password on a sub-feature) → platform admins get one "Application error" notification, not one per request.
+- [ ] Review Settings → Organization → Data retention values with the business owner.

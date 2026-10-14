@@ -43,6 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['org' => ResolveOrganization::class, 'perm' => RequirePermission::class]);
+        // Bearer API tokens: resolved before the session stack; CSRF is skipped only for token-authenticated requests.
+        $middleware->web(prepend: [\App\Http\Middleware\AuthenticateApiToken::class]);
+        $middleware->replace(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class, \App\Http\Middleware\ValidateCsrfToken::class);
         $middleware->append(SecurityHeaders::class);
         // Tenant must be bound before route-model binding so {lead}, {contact}, ... resolve inside the user's organization.
         $middleware->prependToPriorityList(\Illuminate\Routing\Middleware\SubstituteBindings::class, ResolveOrganization::class);
@@ -52,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) use ($apiError): void {
         $exceptions->shouldRenderJsonWhen(fn (Request $r) => $r->is('api/*') || $r->expectsJson());
         $exceptions->dontReport([DomainRuleException::class]);
+        $exceptions->report(fn (Throwable $e) => \App\Support\Ops\ErrorMonitor::report($e));
 
         $exceptions->render(function (Throwable $e, Request $r) use ($apiError) {
             if (! $r->is('api/*')) {

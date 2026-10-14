@@ -35,3 +35,10 @@
 - Exclusion lists are CRM-side only. To exclude people inside Meta, upload them as an audience and exclude that audience in the ad set.
 - Deleting a segment leaves its Meta audience in Ads Manager; remote assets are never deleted silently.
 - Audience sizes shown are Meta's own approximate bounds; the CRM shows "eligible" counts, never a predicted match count.
+
+## Phase 6 — production readiness
+- Error monitoring is built in (fingerprinted notifications + optional webhook) rather than bundling a vendor SDK, because the build environment had no package access. Adding Sentry later is one `composer require` plus `SENTRY_LARAVEL_DSN`; the built-in monitor keeps working alongside it.
+- API tokens inherit the full permission set of their owner. Scoped abilities were left out deliberately: a marketing manager creating a token for Zapier gets exactly what they can already do in the UI, nothing more.
+- Retention housekeeping and erasure are separate on purpose: retention never touches people, consent or audit; erasure is manual, reasoned and audited.
+- Backups are written locally and must be shipped off-server by the operator (documented); the app does not hold cloud storage credentials.
+- The sandbox used for this build cannot reach Packagist, so `composer audit` is listed as a release step rather than claimed as done.

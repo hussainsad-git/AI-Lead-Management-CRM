@@ -2,6 +2,14 @@
 
 Base path `/api/v1`. Session-authenticated (same cookie as the web UI) with CSRF: send `X-CSRF-TOKEN` (from `<meta name="csrf-token">`) on every non-GET request and `Accept: application/json`. Rate limit: 240 req/min per user; sensitive endpoints (export, bulk, import upload, merge, user/role changes) 10/min. Token auth for external systems is planned for Phase 6.
 
+## Authentication
+Two ways to call `/api/v1`: the browser session (cookie + `X-CSRF-TOKEN`, used by the app) or a **personal API token** created on *My profile → API tokens* and sent as `Authorization: Bearer lf_…`. Token requests need no CSRF token and no cookie; they run with the owner's permissions inside the owner's organization and are rate-limited per user. Example:
+```bash
+curl -s https://crm.example.com/api/v1/leads -H "Authorization: Bearer lf_…" -H "Accept: application/json"
+curl -s -X POST https://crm.example.com/api/v1/leads -H "Authorization: Bearer lf_…" -H "Content-Type: application/json" \
+  -d '{"contact":{"name":"Ali","phone":"03001234567"},"lead_source_id":5,"product_interest":"5 marla plot","attribution":{"platform":"web","source":"landing_page","campaign_name":"Oct plots"}}'
+```
+
 ## Conventions
 
 Success: `{"data": ..., "meta": {...}}`. Paginated lists: `meta = {page, per_page, total, last_page}`; `?page=&per_page=` (5–100).
@@ -110,5 +118,7 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 | GET `audiences/meta`, GET/POST `audiences`, GET/PATCH/DELETE `audiences/{id}`, POST `audiences/estimate`, POST `audiences/{id}/refresh` | audiences.manage | segment builder; counts = members vs eligible with per-reason skips; previews masked |
 | GET `audiences/{id}/export?hashed=0\|1` | audiences.manage + leads.export | audited; hashed variant = SHA-256 phone/email/country only |
 | POST `audiences/{id}/sync` (202), GET `audiences/jobs`, GET `audiences/meta-status` | audiences.manage | Meta Custom Audience create + replace upload (queued); live Meta size/delivery |
+| GET/POST/DELETE `api-tokens[/{id}]` | api.tokens, browser session only | personal bearer tokens; plaintext returned once on create |
+| POST `contacts/{id}/erase {reason, confirm:"ERASE"}` | contacts.erase, browser session only | irreversible PII erasure; returns scrub counts |
 | GET/POST `/webhooks/whatsapp/{key}` | public, signature-verified | Meta verification + events |
 | GET/POST `/webhooks/meta/{key}` | public, signature-verified | Page `leadgen` webhook (Lead Ads) |

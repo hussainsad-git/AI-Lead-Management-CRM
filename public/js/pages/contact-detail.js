@@ -8,9 +8,9 @@
     document.title = c.display_name + ' · LeadFlow';
     $('#crumb').text(c.display_name);
     const html = `
-      <div class="lf-page-head"><div><h1>${LF.esc(c.display_name)} ${c.do_not_contact ? '<span class="dnc align-middle">DO NOT CONTACT</span>' : ''}</h1>
+      <div class="lf-page-head"><div><h1>${c.erased_at ? 'Erased contact' : LF.esc(c.display_name)} ${c.do_not_contact ? '<span class="dnc align-middle">DO NOT CONTACT</span>' : ''}${c.erased_at ? ` <span class="badge text-bg-secondary align-middle">erased ${LF.fmt.date(c.erased_at)}</span>` : ''}</h1>
         <div class="small text-muted">Contact #${c.id} · ${LF.esc(LF.fmt.label(c.type))} · since ${LF.fmt.date(c.created_at)}</div></div>
-        <div class="lf-actions">${LF.can('leads.create') ? '<button class="btn btn-primary btn-sm" id="newInquiry"><i class="bi bi-plus-lg"></i> New inquiry</button>' : ''}</div></div>
+        <div class="lf-actions">${LF.can('leads.create') && !c.erased_at ? '<button class="btn btn-primary btn-sm" id="newInquiry"><i class="bi bi-plus-lg"></i> New inquiry</button>' : ''}${LF.can('contacts.erase') && !c.erased_at ? '<button class="btn btn-outline-danger btn-sm" id="eraseContact"><i class="bi bi-eraser"></i> Erase personal data</button>' : ''}</div></div>
       <div class="row g-3">
         <div class="col-lg-5">
           <div class="card mb-3"><div class="card-header">Details</div><div class="card-body"><dl class="dl-grid">
@@ -50,6 +50,11 @@
     LF.confirm({ title: 'Merge contacts', danger: true, confirmText: 'Merge',
       html: `<p>Merge <strong>${LF.esc($(this).data('name'))}</strong> (#${src}) into <strong>${LF.esc(D.contact.display_name)}</strong> (#${id})?</p><ul class="small"><li>All leads, timeline, consent and suppression records move to this contact.</li><li>Only empty fields here are filled; nothing here is overwritten.</li><li>The other record is archived and the merge is audited. This cannot be undone from the UI.</li></ul>` })
       .then(() => LF.api('POST', `contacts/${id}/merge`, { source_contact_id: src, confirm: true }).then(() => { LF.toast('Contacts merged'); load(); }));
+  });
+  $(document).on('click', '#eraseContact', () => {
+    LF.confirm({ title: 'Erase personal data — irreversible', reason: true, reasonRequired: true, reasonLabel: 'Reason (e.g. "deletion request received by email on 12 Oct")', danger: true, confirmText: 'Erase permanently',
+      html: '<p class="mb-1">Removes name, phone numbers, email, city, message texts, notes and AI transcripts for this person. Lead counts and attribution are kept without identity. The opt-out stays in force so they are never contacted again.</p><p class="mb-0 small text-muted">This cannot be undone. It is recorded in the audit log.</p>' })
+      .then(reason => LF.api('POST', `contacts/${id}/erase`, { reason, confirm: 'ERASE' }).then(r => { LF.toast(`Erased · ${r.data.messages} messages, ${r.data.notes} notes scrubbed`); load(); }));
   });
   $(document).on('click', '#optOutAll', () => {
     LF.confirm({ title: 'Opt out of all contact', reason: true, reasonRequired: true, reasonLabel: 'Reason / how they asked', danger: true, confirmText: 'Opt out', body: 'Withdraws consent on all channels, suppresses the contact and cancels pending follow-ups.' })
