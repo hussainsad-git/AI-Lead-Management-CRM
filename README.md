@@ -111,7 +111,7 @@ See `docs/ACCEPTANCE.md` for the criterion-by-criterion verification record and 
 
 ## Security notes
 
-Argon2id passwords; session regenerated on login; HttpOnly/Secure/SameSite cookies; CSRF on every state-changing request (the JSON API uses the session, not tokens); login throttled (5/min per email+IP); strict CSP (`'self'` only, no inline script/style); tenant scoping on every model with fail-closed default; permissions enforced server-side and record visibility (own/team/all) applied to lists, detail, pipeline, follow-ups, dashboard and exports; audited exports, merges, opt-outs, role/user/settings changes; CSV exports neutralise formula injection; uploaded spreadsheet formulas are never evaluated. Run `composer audit` in CI for dependency advisories.
+Argon2id passwords; session regenerated on login; HttpOnly/Secure/SameSite cookies; CSRF on every state-changing request (the JSON API uses the session, not tokens); login throttled (5/min per email+IP); strict CSP (`'self'` only, no inline script/style); tenant scoping on every model with fail-closed default; permissions enforced server-side and record visibility (own/team/all) applied to lists, detail, pipeline, follow-ups, dashboard and exports; audited exports, merges, opt-outs, role/user/settings changes; CSV exports neutralise formula injection; uploaded spreadsheet formulas are never evaluated. `composer audit` runs in CI (`.github/workflows/ci.yml`) together with the test matrix.
 
 ## Documentation
 

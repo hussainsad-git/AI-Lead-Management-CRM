@@ -35,7 +35,7 @@
 - Meta uploads: SHA-256 hashed phone/email/country only; previews mask identifiers; exports require a separate permission and are audited.
 
 ## Dependency review
-`composer audit` must be run on a machine with Packagist access before each release (the build sandbox used for this delivery has no outbound internet, so it was not run here). Pinned major versions: Laravel 13, PhpSpreadsheet 5, libphonenumber-lite 9, pdfparser 2. Front-end libraries are vendored and should be refreshed with each release (Bootstrap 5.3.x, jQuery 4.x, Chart.js 4.x, SortableJS).
+`composer audit` must be run on a machine with Packagist access before each release; `.github/workflows/ci.yml` runs `composer audit --locked --no-dev` on every push and pull request, alongside the test suite on PHP 8.3/8.4 × SQLite/MySQL 8.4 and `i18n:build --check`. The build sandbox used for this delivery cannot reach Packagist (proxy returns 403), so the audit was not run here and the MySQL CI leg is unexecuted until the first push — all raw SQL in the codebase was reviewed for dialect portability (only `LOWER()`, `CASE`, `COALESCE`, `NOT EXISTS`). Pinned major versions: Laravel 13, PhpSpreadsheet 5, libphonenumber-lite 9, pdfparser 2. Front-end libraries are vendored and should be refreshed with each release (Bootstrap 5.3.x, jQuery 4.x, Chart.js 4.x, SortableJS).
 
 ## Review findings addressed in Phase 6
 - Token issuance/erasure blocked for token-authenticated callers (browser session only).
