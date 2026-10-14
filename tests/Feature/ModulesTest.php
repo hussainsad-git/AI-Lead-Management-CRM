@@ -20,6 +20,8 @@ class ModulesTest extends TestCase
         $this->assertArrayHasKey('resolution_rate', $d['ai']);
         $csv = $this->actingAs($admin)->get('/api/v1/analytics/export?section=sources&range=last_7_days')->assertOk()->streamedContent();
         $this->assertStringContainsString('Source,Leads', $csv);
+        $xlsx = $this->actingAs($admin)->get('/api/v1/analytics/export?section=sources&range=last_7_days&format=xlsx')->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')->streamedContent();
+        $this->assertStringStartsWith('PK', $xlsx);
     }
 
     public function test_notifications_are_private_and_markable(): void

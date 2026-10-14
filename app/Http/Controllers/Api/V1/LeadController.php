@@ -182,7 +182,8 @@ class LeadController extends ApiController
     {
         abort_unless($this->user()->hasPermission('leads.bulk_update'), 403);
         $data = $request->validate([
-            'action' => ['required', 'in:assign,status,priority,tags_add,follow_up,archive'],
+            'action' => ['required', 'in:assign,status,priority,tags_add,follow_up,archive,audience_add'],
+            'audience_segment_id' => ['required_if:action,audience_add', 'integer'],
             'ids' => ['required_without:filters', 'array', 'max:5000'],
             'ids.*' => ['integer'],
             'filters' => ['required_without:ids', 'array'],
@@ -195,7 +196,7 @@ class LeadController extends ApiController
             'tags.*' => ['string', 'max:60'],
             'scheduled_at' => ['required_if:action,follow_up', 'nullable', 'string'],
         ]);
-        $perm = ['assign' => 'leads.assign', 'archive' => 'leads.archive', 'follow_up' => 'followups.manage_all'][$data['action']] ?? 'leads.update';
+        $perm = ['assign' => 'leads.assign', 'archive' => 'leads.archive', 'follow_up' => 'followups.manage_all', 'audience_add' => 'audiences.manage'][$data['action']] ?? 'leads.update';
         abort_unless($this->user()->hasPermission($perm), 403);
         if ($data['action'] === 'assign') {
             $this->assertAssignableByManager($data['assigned_user_id'] ?? null);
@@ -217,6 +218,16 @@ class LeadController extends ApiController
             throw new DomainRuleException("Bulk actions are limited to 5000 leads; {$total} match.", 'bulk_too_large');
         }
         $scheduledAt = isset($data['scheduled_at']) ? LocalTime::toUtc($data['scheduled_at']) : null;
+        if ($data['action'] === 'audience_add') {
+            $segment = \App\Models\AudienceSegment::where('kind', 'audience')->findOrFail((int) $data['audience_segment_id']);
+            $ids = (clone $q)->pluck('leads.id')->all();
+            $added = app(\App\Services\Audiences\AudienceService::class)->addLeads($segment, $ids, $this->user()->id);
+            $audit->log('leads.bulk_audience_add', $segment, [], ['matched' => $total, 'added' => $added]);
+            $skipped = $segment->fresh()->memberships()->whereNull('removed_at')->whereIn('lead_id', $ids)->where('eligible', false)->count();
+
+            return $this->ok(['matched' => $total, 'updated' => $added, 'failed' => [], 'failed_count' => 0,
+                'note' => $skipped ? "$skipped of the added leads are in the segment but not eligible for export/upload (opted out, consent, exclusion list or no identifier)." : null]);
+        }
 
         $done = 0;
         $failed = [];

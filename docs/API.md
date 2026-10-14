@@ -48,7 +48,7 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 | POST `leads/{id}/follow-ups` | followups.manage_* | `{scheduled_at, purpose, priority, assigned_user_id, notes}` |
 | POST `leads/{id}/calls` | followups.manage_* | ad-hoc call: `{call_outcome_id, notes, duration_minutes, next_follow_up_at, callback_at, next_action}` |
 | POST `leads/{id}/appointments` | followups.manage_* | `{title, type, starts_at, ends_at, location, notes, assigned_user_id}` |
-| POST `leads/bulk` | leads.bulk_update (+ action permission) | `{action: assign\|status\|priority\|tags_add\|follow_up\|archive, ids[] or filters{}, confirm}`; ≤5000 leads; per-lead failures returned |
+| POST `leads/bulk` | leads.bulk_update (+ action permission) | `{action: assign\|status\|priority\|tags_add\|follow_up\|archive\|audience_add (audience_segment_id), ids[] or filters{}, confirm}`; ≤5000 leads; per-lead failures returned |
 | POST `leads/export` | leads.export | `{format: csv\|xlsx, columns[], ids[] or filters{}}` → file download (audited) |
 | GET `pipeline` | leads.view_* | columns with counts and up to 40 cards; same filters as `leads`; `include_closed=1` |
 | GET `contacts`, `contacts/{id}` | contacts.view | visible = has at least one visible lead |
@@ -113,7 +113,7 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 | POST `automation/rules/{id}/test {lead_id}` | automation.manage | dry run: per-condition pass/fail, `would_run`; never performs actions |
 | GET `automation/executions?rule_id&status&page` | automation.manage | execution history with per-action results |
 | PUT `profile/notifications {email:{type:bool}}` | any | per-type email preferences; `GET profile` returns `notifications.email_enabled` (false when MAIL_MAILER is log/array) |
-| GET `analytics`, GET `analytics/export?section=sources\|campaigns\|salespeople` | reports.view | same date/filters as dashboard + `source_id, user_id, campaign_id, platform` |
+| GET `analytics`, GET `analytics/export?section=sources\|campaigns\|salespeople&format=csv\|xlsx` | reports.view | same date/filters as dashboard + `source_id, user_id, campaign_id, platform` |
 | GET `notifications`, POST `notifications/read {ids?}` | any | own notifications |
 | GET/PATCH `profile`, POST `profile/password` | any | password change signs out other sessions |
 | PATCH `settings/business`, POST `settings/logo` | settings.manage | industry, colour, locale, hours, auto-assign, scoring weights |

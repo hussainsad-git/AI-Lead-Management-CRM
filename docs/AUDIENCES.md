@@ -3,6 +3,8 @@
 ## Segments
 A segment is a saved query over leads + contacts: `{match: all|any, groups: [{match: all|any, rules: [{field, op, value}]}]}` — groups combine with the outer match, rules inside a group with the inner one (two-level AND/OR). Fields and operators are in `config/audiences.php` (`SegmentQuery` turns them into one SQL query; `SegmentValidator` checks types and that referenced campaign/tag ids belong to the organization). Twelve suggested segments are seeded per business (`DefaultSegments`, idempotent by `template_key`), including a **Do Not Contact exclusions** list that is attached to every seeded audience.
 
+**Manual additions.** The Leads list bulk action *Add to audience* (needs `audiences.manage`) records the selected leads in `audience_manual_members`; they count as matching the segment regardless of its rules (`manual OR (rule groups)`), but eligibility is still applied, so an opted-out person added by hand is shown as "in segment, not eligible" and never exported or uploaded.
+
 Two kinds: **audience** (exportable/uploadable) and **exclusion** (only ever subtracted from audiences; never uploaded).
 
 ## Eligibility — what may leave the CRM

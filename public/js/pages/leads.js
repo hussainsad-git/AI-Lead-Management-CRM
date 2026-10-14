@@ -32,6 +32,7 @@
   $('.export-only').toggleClass('hidden', !LF.can('leads.export'));
   $('.create-only').toggleClass('hidden', !LF.can('leads.create'));
   if (!LF.can('leads.bulk_update')) $('#bulkBar [data-bulk]').not('[data-bulk="export"]').remove();
+  if (!LF.can('audiences.manage')) $('#bulkBar [data-bulk="audience_add"]').remove();
   if (!LF.can('leads.assign')) $('[data-bulk="assign"]').remove();
   if (!LF.can('leads.archive')) $('[data-bulk="archive"]').remove();
   if (!LF.can('followups.manage_all')) $('[data-bulk="follow_up"]').remove();
@@ -216,7 +217,7 @@
     LF.lookups().then(lk => {
       const n = state.allMatching ? state.meta.total : state.selected.size;
       let html = `<p class="small text-muted mb-2">Applies to <strong>${LF.fmt.num(n)}</strong> lead${n === 1 ? '' : 's'} you can access. Leads that cannot be updated are reported individually.</p>`;
-      const titles = { assign: 'Assign leads', status: 'Change status', priority: 'Set priority', follow_up: 'Schedule follow-ups', tags_add: 'Add tags', archive: 'Archive leads' };
+      const titles = { assign: 'Assign leads', status: 'Change status', priority: 'Set priority', follow_up: 'Schedule follow-ups', tags_add: 'Add tags', archive: 'Archive leads', audience_add: 'Add to audience segment' };
       if (bulkAction === 'assign') {
         const opts = lk.users.filter(u => u.accepts_assignments).map(u => `<option value="${u.id}">${LF.esc(u.name)}</option>`).join('');
         html += `<label class="form-label" for="b-user">Assign to</label><select class="form-select" id="b-user" name="assigned_user_id"><option value="">Unassign</option>${opts}</select>
@@ -233,6 +234,10 @@
           <div class="form-text">Opted-out or closed leads are skipped and listed.</div>`;
       } else if (bulkAction === 'tags_add') {
         html += `<label class="form-label" for="b-tags">Tags</label><input class="form-control" id="b-tags" name="tags_csv" placeholder="Comma separated">`;
+      } else if (bulkAction === 'audience_add') {
+        html += `<label class="form-label" for="b-seg">Segment</label><select class="form-select" id="b-seg" name="audience_segment_id"><option>Loading…</option></select>
+          <div class="form-text">Added leads stay in the segment even if its rules don't match them. Opted-out people, consent failures and exclusion lists still apply before any export or upload.</div>`;
+        LF.api('GET', 'audiences').then(r => $('#b-seg').html(r.data.filter(s => s.kind === 'audience').map(s => `<option value="${s.id}">${LF.esc(s.name)}</option>`).join('') || '<option value="">No segments yet</option>'));
       } else if (bulkAction === 'archive') {
         html += `<div class="alert alert-warning py-2 small">Archived leads are hidden from lists and their pending follow-ups are cancelled. Archiving is not deletion; retention and legal erasure are handled separately.</div>
           <label class="form-label" for="b-reason">Reason</label><input class="form-control" id="b-reason" name="reason" maxlength="255" required>
@@ -256,6 +261,7 @@
       bootstrap.Modal.getInstance(document.getElementById('bulkModal')).hide();
       const d = r.data;
       LF.toast(`${d.updated} of ${d.matched} updated` + (d.failed_count ? `, ${d.failed_count} skipped` : ''), d.failed_count ? 'warning' : 'success');
+      if (d.note) LF.toast(d.note, 'warning');
       if (d.failed_count) {
         LF.confirm({ title: 'Some leads were not updated', html: '<ul class="small mb-0">' + d.failed.map(f => `<li><a href="/leads/${f.id}">#${f.id}</a>: ${LF.esc(f.message)}</li>`).join('') + '</ul>', confirmText: 'OK' }).catch(() => {});
       }

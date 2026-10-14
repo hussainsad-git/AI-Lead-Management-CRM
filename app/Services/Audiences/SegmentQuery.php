@@ -11,16 +11,17 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class SegmentQuery
 {
-    public function build(array $definition): Builder
+    public function build(array $definition, ?int $segmentId = null): Builder
     {
         $q = Lead::query()->whereNull('leads.archived_at')
             ->whereHas('contact', fn ($c) => $c->whereNull('merged_into_id'));
         $groups = array_values(array_filter((array) ($definition['groups'] ?? []), fn ($g) => ! empty($g['rules'])));
+        $manual = $segmentId ? fn (Builder $m) => $m->whereIn('leads.id', fn ($s) => $s->select('lead_id')->from('audience_manual_members')->where('audience_segment_id', $segmentId)) : null;
         if (! $groups) {
-            return $q;
+            return $manual ? $q->where($manual) : $q;
         }
         $outerAny = ($definition['match'] ?? 'all') === 'any';
-        $q->where(function (Builder $w) use ($groups, $outerAny) {
+        $groupsFn = function (Builder $w) use ($groups, $outerAny) {
             foreach ($groups as $g) {
                 $innerAny = ($g['match'] ?? 'all') === 'any';
                 $fn = function (Builder $gw) use ($g, $innerAny) {
@@ -31,7 +32,9 @@ class SegmentQuery
                 };
                 $outerAny ? $w->orWhere($fn) : $w->where($fn);
             }
-        });
+        };
+        // manual members OR (the rule groups)
+        $manual ? $q->where(fn (Builder $w) => $w->where($manual)->orWhere($groupsFn)) : $q->where($groupsFn);
 
         return $q;
     }

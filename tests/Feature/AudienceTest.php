@@ -194,4 +194,31 @@ class AudienceTest extends TestCase
         Artisan::call('audiences:sync');
         $this->assertSame(1, $this->inOrg($org, fn () => AudienceSyncJob::where('kind', 'meta_replace')->count())); // auto_sync off → no new job
     }
+
+    public function test_bulk_add_to_segment_keeps_leads_in_segment_but_eligibility_still_applies(): void
+    {
+        $org = $this->makeOrg();
+        $admin = $this->makeUser($org);
+        $rep = $this->makeUser($org, 'sales_rep');
+        $a = $this->createLead($org, $admin, ['contact' => ['name' => 'A', 'phone' => '03001111111'], 'priority' => 'low']);
+        $b = $this->createLead($org, $admin, ['contact' => ['name' => 'B', 'phone' => '03002222222'], 'priority' => 'low']);
+        $this->api($admin, 'POST', "leads/{$b['id']}/status", ['lead_status_id' => $this->lookup($org, LeadStatus::class, 'do_not_contact'), 'reason' => 'asked'])->assertOk();
+        $seg = $this->api($admin, 'POST', 'audiences', ['name' => 'VIP', 'definition' => $this->def([['field' => 'priority', 'op' => 'in', 'value' => ['urgent']]])])->assertCreated()->json('data');
+        $this->assertSame(0, $seg['last_count']);
+
+        $this->api($rep, 'POST', 'leads/bulk', ['action' => 'audience_add', 'audience_segment_id' => $seg['id'], 'ids' => [$a['id']]])->assertForbidden();
+        $r = $this->api($admin, 'POST', 'leads/bulk', ['action' => 'audience_add', 'audience_segment_id' => $seg['id'], 'ids' => [$a['id'], $b['id']]])->assertOk();
+        $this->assertSame(2, $r->json('data.updated'));
+        $this->assertStringContainsString('1 of the added leads', $r->json('data.note'));
+        $show = $this->api($admin, 'GET', 'audiences/'.$seg['id'])->json('data');
+        $this->assertSame(2, $show['last_count']);
+        $this->assertSame(1, $show['last_eligible']); // B is Do Not Contact
+        // Re-adding is idempotent; rules still work alongside manual members.
+        $this->api($admin, 'POST', 'leads/bulk', ['action' => 'audience_add', 'audience_segment_id' => $seg['id'], 'ids' => [$a['id']]])->assertOk()->assertJsonPath('data.updated', 0);
+        $this->api($admin, 'PATCH', "leads/{$a['id']}", ['priority' => 'urgent'])->assertOk();
+        $this->api($admin, 'POST', 'audiences/'.$seg['id'].'/refresh')->assertOk()->assertJsonPath('data.members', 2);
+        // Another organization's segment id is not reachable.
+        $other = $this->makeOrg('Other');
+        $this->api($this->makeUser($other), 'POST', 'leads/bulk', ['action' => 'audience_add', 'audience_segment_id' => $seg['id'], 'ids' => [1]])->assertNotFound();
+    }
 }

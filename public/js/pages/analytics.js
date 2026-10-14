@@ -70,7 +70,7 @@
   }
 
   function section(key, title, body) {
-    return `<div class="card mb-3"><div class="card-header d-flex align-items-center">${LF.esc(title)}<button class="btn btn-sm btn-light ms-auto" data-export="${key}"><i class="bi bi-download"></i> CSV</button></div><div class="table-wrap">${body}</div></div>`;
+    return `<div class="card mb-3"><div class="card-header d-flex align-items-center">${LF.esc(title)}<div class="ms-auto d-flex gap-1"><button class="btn btn-sm btn-light" data-export="${key}" data-format="csv"><i class="bi bi-download"></i> CSV</button><button class="btn btn-sm btn-light" data-export="${key}" data-format="xlsx"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</button></div></div><div class="table-wrap">${body}</div></div>`;
   }
 
   function load() {
@@ -80,7 +80,7 @@
     LF.api('GET', 'analytics', p).then(r => render(r.data)).always(() => $('#anBody').css('opacity', 1));
   }
   $(document).on('click', '[data-export]', function () {
-    const q = new URLSearchParams(Object.assign(params(), { section: $(this).data('export') }));
+    const q = new URLSearchParams(Object.assign(params(), { section: $(this).data('export'), format: $(this).data('format') || 'csv' }));
     window.location.href = '/api/v1/analytics/export?' + q.toString();
   });
   $('#anRange').on('change', function () { $('#anFrom, #anTo').toggleClass('hidden', this.value !== 'custom'); load(); });

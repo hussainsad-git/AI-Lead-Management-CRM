@@ -34,16 +34,38 @@ class AnalyticsController extends ApiController
     public function export(Request $request, AnalyticsService $svc, CurrentOrganization $org, AuditLogger $audit)
     {
         [$r, $f] = $this->input($request, $org);
-        $section = $request->validate(['section' => ['required', 'in:sources,campaigns,salespeople']])['section'];
+        $v = $request->validate(['section' => ['required', 'in:sources,campaigns,salespeople'], 'format' => ['nullable', 'in:csv,xlsx']]);
+        $section = $v['section'];
+        $format = $v['format'] ?? 'csv';
         $rows = $svc->{$section}($r, $f);
-        $audit->log('reports.exported', null, [], ['section' => $section, 'range' => $r->toArray()]);
-        $name = "leadflow-$section-".($r->localDates()[0] ?? 'all').'.csv';
+        $audit->log('reports.exported', null, [], ['section' => $section, 'format' => $format, 'range' => $r->toArray()]);
+        $name = "leadflow-$section-".($r->localDates()[0] ?? 'all').'.'.$format;
+        $headers = $rows ? array_map(fn ($k) => ucwords(str_replace('_', ' ', $k)), array_keys($rows[0])) : [];
 
-        return response()->streamDownload(function () use ($rows) {
+        if ($format === 'xlsx') {
+            return response()->streamDownload(function () use ($rows, $headers, $section) {
+                $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+                $sheet = $book->getActiveSheet();
+                $sheet->setTitle(ucfirst($section));
+                $line = 1;
+                foreach (array_merge([$headers], array_map('array_values', $rows)) as $row) {
+                    foreach ($row as $i => $value) {
+                        $cell = $sheet->getCell([$i + 1, $line]);
+                        is_int($value) || is_float($value) ? $cell->setValue($value) : $cell->setValueExplicit(is_array($value) ? json_encode($value) : (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                    }
+                    $line++;
+                }
+                $sheet->getStyle('1:1')->getFont()->setBold(true);
+                (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save('php://output');
+                $book->disconnectWorksheets();
+            }, $name, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'no-store']);
+        }
+
+        return response()->streamDownload(function () use ($rows, $headers) {
             $out = fopen('php://output', 'wb');
             fwrite($out, "\xEF\xBB\xBF");
-            if ($rows) {
-                fputcsv($out, array_map(fn ($k) => ucwords(str_replace('_', ' ', $k)), array_keys($rows[0])), ',', '"', '');
+            if ($headers) {
+                fputcsv($out, $headers, ',', '"', '');
             }
             foreach ($rows as $row) {
                 fputcsv($out, array_map(fn ($v) => LeadExportService::neutralize(is_array($v) ? json_encode($v) : (string) $v), $row), ',', '"', '');

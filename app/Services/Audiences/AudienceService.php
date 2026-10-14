@@ -24,7 +24,21 @@ class AudienceService
 
     public function matches(AudienceSegment $s): Builder
     {
-        return $this->query->build($s->definition ?? []);
+        return $this->query->build($s->definition ?? [], $s->id);
+    }
+
+    /** Bulk "add to audience": records manual inclusions; eligibility is still applied at refresh/export time. */
+    public function addLeads(AudienceSegment $s, array $leadIds, ?int $userId): int
+    {
+        $n = 0;
+        foreach (array_unique(array_map('intval', $leadIds)) as $id) {
+            $n += (int) \Illuminate\Support\Facades\DB::table('audience_manual_members')->insertOrIgnore(['organization_id' => $s->organization_id, 'audience_segment_id' => $s->id, 'lead_id' => $id, 'added_by' => $userId, 'created_at' => now()]);
+        }
+        if ($n) {
+            $this->refresh($s);
+        }
+
+        return $n;
     }
 
     /** Re-evaluates the segment: upserts memberships, marks leavers, returns counts. */

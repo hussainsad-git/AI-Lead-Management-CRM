@@ -62,6 +62,7 @@
     <button class="btn btn-sm btn-light" data-bulk="priority"><i class="bi bi-exclamation-diamond"></i> Priority</button>
     <button class="btn btn-sm btn-light" data-bulk="follow_up"><i class="bi bi-telephone-plus"></i> Follow-up</button>
     <button class="btn btn-sm btn-light" data-bulk="tags_add"><i class="bi bi-tags"></i> Add tags</button>
+    <button class="btn btn-sm btn-light" data-bulk="audience_add" data-perm="audiences.manage"><i class="bi bi-diagram-3"></i> Add to audience</button>
     <button class="btn btn-sm btn-light" data-bulk="export"><i class="bi bi-download"></i> Export</button>
     <button class="btn btn-sm btn-outline-danger" data-bulk="archive"><i class="bi bi-archive"></i> Archive</button>
     <button class="btn btn-sm btn-link ms-auto" id="clearSelection" type="button">Clear</button>
