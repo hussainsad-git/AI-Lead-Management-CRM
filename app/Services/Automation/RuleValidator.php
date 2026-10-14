@@ -92,6 +92,24 @@ class RuleValidator
         ];
     }
 
+    /** https only, no private/loopback hosts (SSRF), no credentials in the URL. */
+    private function webhookUrl(string $url): string
+    {
+        $url = trim($url);
+        $p = parse_url($url);
+        if (! $p || ($p['scheme'] ?? '') !== 'https' || empty($p['host']) || isset($p['user']) || isset($p['pass']) || strlen($url) > 500) {
+            throw new \InvalidArgumentException('Enter an https:// URL.');
+        }
+        $host = strtolower($p['host']);
+        $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : (gethostbyname($host) !== $host ? gethostbyname($host) : null);
+        if ($host === 'localhost' || str_ends_with($host, '.local') || str_ends_with($host, '.internal')
+            || ($ip && ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))) {
+            throw new \InvalidArgumentException('Webhook URLs must point to a public host.');
+        }
+
+        return $url;
+    }
+
     private function params(string $type, array $a): array
     {
         $users = fn () => User::query()->inCurrentOrganization()->where('is_active', true);
@@ -112,6 +130,7 @@ class RuleValidator
             'add_tag' => ['tag' => ($t = mb_substr(trim((string) ($a['tag'] ?? '')), 0, 50)) !== '' ? $t : throw new \InvalidArgumentException('Enter a tag.')],
             'move_stage' => ['status_id' => (LeadStatus::where('is_active', true)->where('category', 'open')->find((int) ($a['status_id'] ?? 0)) ?? throw new \InvalidArgumentException('Choose an open stage.'))->id],
             'cancel_tasks' => [],
+            'call_webhook' => ['url' => $this->webhookUrl((string) ($a['url'] ?? '')), 'secret' => mb_substr(trim((string) ($a['secret'] ?? '')), 0, 128)],
             'send_whatsapp_template' => ['template_id' => (MessageTemplate::where('status', 'APPROVED')->find((int) ($a['template_id'] ?? 0)) ?? throw new \InvalidArgumentException('Choose an approved template.'))->id,
                 'params' => mb_substr(trim((string) ($a['params'] ?? '')), 0, 500)],
         };

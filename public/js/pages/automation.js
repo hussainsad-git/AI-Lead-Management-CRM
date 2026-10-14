@@ -6,6 +6,7 @@
   const PARAM_LABELS = {
     team_id: 'Team', user_id: 'Person', user_ids: 'People', purpose: 'Task title', in_minutes: 'Due in (minutes)',
     priority: 'Priority', message: 'Message', tag: 'Tag', status_id: 'Stage', template_id: 'Template', params: 'Template variables (separate with |)',
+    url: 'Webhook URL (https)', secret: 'Signing secret',
   };
   const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
   const triggerOf = k => meta.triggers.find(x => x.key === k) || { label: k };
@@ -31,6 +32,7 @@
     if (a.type === 'add_tag') extra = a.tag;
     if (a.type === 'move_stage') extra = (meta.open_statuses.find(s => s.id === a.status_id) || {}).name;
     if (a.type === 'send_whatsapp_template') extra = (meta.templates.find(x => x.id === a.template_id) || { name: '#' + a.template_id }).name;
+    if (a.type === 'call_webhook') { try { extra = new URL(a.url).host; } catch (e) { extra = a.url; } }
     return esc(t(actionOf(a.type).label)) + (extra ? ` <span class="text-muted">(${esc(extra)})</span>` : '');
   }
 
@@ -111,6 +113,8 @@
       case 'template': input = meta.templates.length ? sel(meta.templates, t('Choose…')) : `<div class="small text-warning">${esc(t('No approved WhatsApp templates. Sync templates on the Integrations page.'))}</div>`; break;
       case 'priority': input = `<select class="form-select form-select-sm a-param" data-p="${name}">${optional ? opt('', t('Lead priority'), !value) : ''}${PRIORITIES.map(p => opt(p, t(LF.fmt.label(p)), p === value)).join('')}</select>`; break;
       case 'number': input = `<input type="number" min="0" max="43200" class="form-control form-control-sm a-param" data-p="${name}" value="${esc(value ?? 0)}">`; break;
+      case 'url': input = `<input type="url" class="form-control form-control-sm a-param" data-p="${name}" placeholder="https://hooks.zapier.com/…" maxlength="500" value="${esc(value ?? '')}">`; break;
+      case 'secret': input = `<input class="form-control form-control-sm a-param" data-p="${name}" maxlength="128" value="${esc(value ?? '')}" placeholder="${t('optional — used to sign requests')}">`; break;
       default: input = `<input class="form-control form-control-sm a-param" data-p="${name}" maxlength="191" value="${esc(value ?? '')}">`;
     }
     return `<div class="col-md">${lbl}${input}</div>`;

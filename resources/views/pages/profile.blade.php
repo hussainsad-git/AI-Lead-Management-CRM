@@ -14,7 +14,8 @@
         </div>
         <button class="btn btn-primary mt-3" type="submit">{{ __('Save') }}</button>
     </form></div></div>
-    <div class="col-lg-6"><div class="card"><div class="card-header">{{ __('Change password') }}</div><form class="card-body" id="pwForm" novalidate autocomplete="off">
+    <div class="col-lg-6"><div class="card mb-3" id="tfaCard"><div class="card-header d-flex align-items-center">{{ __('Two-factor authentication') }}<span class="ms-auto" id="tfaBadge"></span></div><div class="card-body" id="tfaBody">{{ __('Loading…') }}</div></div>
+    <div class="card"><div class="card-header">{{ __('Change password') }}</div><form class="card-body" id="pwForm" novalidate autocomplete="off">
         <div class="mb-2"><label class="form-label" for="pw-cur">{{ __('Current password') }}</label><input class="form-control" type="password" id="pw-cur" name="current_password" autocomplete="current-password" required></div>
         <div class="mb-2"><label class="form-label" for="pw-new">{{ __('New password') }}</label><input class="form-control" type="password" id="pw-new" name="password" autocomplete="new-password" required><div class="form-text">{{ __('At least 10 characters with letters and numbers. Other devices will be signed out.') }}</div></div>
         <div class="mb-2"><label class="form-label" for="pw-conf">{{ __('Confirm new password') }}</label><input class="form-control" type="password" id="pw-conf" name="password_confirmation" autocomplete="new-password" required></div>

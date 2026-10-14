@@ -24,7 +24,7 @@ class UserController extends ApiController
         return $this->ok($users->map(fn ($u) => [
             'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'is_active' => $u->is_active,
             'accepts_assignments' => $u->accepts_assignments, 'team' => $u->team?->only(['id', 'name']),
-            'roles' => $u->roles->map->only(['id', 'key', 'name'])->values(), 'last_login_at' => $u->last_login_at?->toIso8601ZuluString(),
+            'roles' => $u->roles->map->only(['id', 'key', 'name'])->values(), 'last_login_at' => $u->last_login_at?->toIso8601ZuluString(), 'two_factor' => (bool) $u->totp_confirmed_at,
             'open_leads' => (int) ($open[$u->id] ?? 0),
         ]));
     }
@@ -46,6 +46,17 @@ class UserController extends ApiController
         $audit->log('user.created', $user, [], ['email' => $user->email, 'roles' => $data['role_ids']]);
 
         return $this->ok(['id' => $user->id], [], 201);
+    }
+
+    /** Admin reset when a user lost their device; the user is signed out and must sign in with password only, then re-enrol. */
+    public function resetTwoFactor(User $user, \App\Services\TwoFactorService $tf)
+    {
+        abort_unless($this->user()->hasPermission('users.manage'), 403);
+        abort_unless($user->organization_id === app(CurrentOrganization::class)->id(), 404);
+        $tf->disable($user, $this->user());
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        return $this->ok(['reset' => true]);
     }
 
     public function update(Request $request, User $user, AuditLogger $audit)

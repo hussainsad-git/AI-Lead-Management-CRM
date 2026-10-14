@@ -175,4 +175,24 @@ class AutomationTest extends TestCase
         Mail::assertSent(NotificationMail::class, 2);
         $this->api($admin, 'GET', 'profile')->assertJsonPath('data.notifications.email_enabled', false);
     }
+
+    public function test_webhook_action_signs_requests_and_rejects_private_urls(): void
+    {
+        $org = $this->makeOrg();
+        $admin = $this->makeUser($org);
+        foreach (['http://example.com/hook', 'https://localhost/hook', 'https://127.0.0.1/hook', 'https://10.0.0.5/hook', 'https://user:pw@example.com/x'] as $bad) {
+            $this->api($admin, 'POST', 'automation/rules', ['trigger' => 'lead.created', 'actions' => [['type' => 'call_webhook', 'url' => $bad]]])->assertStatus(422);
+        }
+        \Illuminate\Support\Facades\Http::fake(['hooks.example.com/*' => \Illuminate\Support\Facades\Http::response('ok', 200)]);
+        $this->api($admin, 'POST', 'automation/rules', ['name' => 'Zap', 'trigger' => 'lead.created', 'actions' => [['type' => 'call_webhook', 'url' => 'https://hooks.example.com/catch/1', 'secret' => 'shh']]])->assertCreated();
+        $lead = $this->createLead($org, $admin, ['contact' => ['name' => 'Hooked', 'phone' => '03001234567']]);
+        \Illuminate\Support\Facades\Http::assertSent(function ($req) use ($lead) {
+            $body = json_decode($req->body(), true);
+            $sig = 'sha256='.hash_hmac('sha256', $req->header('X-LeadFlow-Timestamp')[0].'.'.$req->body(), 'shh');
+            return $req->url() === 'https://hooks.example.com/catch/1' && $req->header('X-LeadFlow-Signature')[0] === $sig
+                && $body['event'] === 'automation.lead.created' && $body['lead']['id'] === $lead['id'] && $body['lead']['contact']['name'] === 'Hooked'
+                && ! isset($body['lead']['source_notes_internal']);
+        });
+        $this->inOrg($org, fn () => $this->assertSame('success', AutomationExecution::first()->status));
+    }
 }

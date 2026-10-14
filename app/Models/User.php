@@ -19,9 +19,10 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    protected $hidden = ['password', 'remember_token', 'totp_secret', 'recovery_codes'];
+
     protected $fillable = ['name', 'email', 'phone', 'password', 'is_active', 'accepts_assignments', 'timezone', 'locale', 'team_id'];
 
-    protected $hidden = ['password', 'remember_token'];
 
     private ?array $permissionCache = null;
 
@@ -35,6 +36,9 @@ class User extends Authenticatable
             'accepts_assignments' => 'boolean',
             'is_platform_admin' => 'boolean',
             'notification_prefs' => 'array',
+            'totp_secret' => 'encrypted',
+            'totp_confirmed_at' => 'datetime',
+            'recovery_codes' => 'encrypted:array',
         ];
     }
 

@@ -59,5 +59,6 @@ return [
         'move_stage' => ['label' => 'Move to stage (open stages only)', 'params' => ['status_id' => 'open_status']],
         'cancel_tasks' => ['label' => 'Cancel open follow-ups', 'params' => []],
         'send_whatsapp_template' => ['label' => 'Send WhatsApp template', 'params' => ['template_id' => 'template', 'params' => 'text?']],
+        'call_webhook' => ['label' => 'Call a webhook (Zapier, Make, your system)', 'params' => ['url' => 'url', 'secret' => 'secret?']],
     ],
 ];

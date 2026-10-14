@@ -25,6 +25,60 @@ class ProfileController extends ApiController
             ]]);
     }
 
+    public function twoFactorStatus()
+    {
+        $u = $this->user();
+
+        return $this->ok(['enabled' => (bool) $u->totp_confirmed_at, 'enabled_at' => $u->totp_confirmed_at?->toIso8601ZuluString(),
+            'recovery_codes_left' => count((array) $u->recovery_codes), 'required' => (bool) app(\App\Services\OrganizationSettings::class)->get('require_2fa')]);
+    }
+
+    public function twoFactorBegin(Request $request, \App\Services\TwoFactorService $tf)
+    {
+        $this->browserOnly($request);
+        $d = $tf->begin($this->user());
+
+        return $this->ok($d + ['qr_svg' => \App\Support\Qr::svg($d['uri'])]);
+    }
+
+    public function twoFactorConfirm(Request $request, \App\Services\TwoFactorService $tf)
+    {
+        $this->browserOnly($request);
+        $data = $request->validate(['code' => ['required', 'string', 'max:12']]);
+
+        return $this->ok(['enabled' => true, 'recovery_codes' => $tf->confirm($this->user(), $data['code'])]);
+    }
+
+    public function twoFactorDisable(Request $request, \App\Services\TwoFactorService $tf)
+    {
+        $this->browserOnly($request);
+        $data = $request->validate(['current_password' => ['required', 'string']]);
+        if (! Hash::check($data['current_password'], $this->user()->password)) {
+            throw ValidationException::withMessages(['current_password' => 'Current password is incorrect.']);
+        }
+        abort_if(app(\App\Services\OrganizationSettings::class)->get('require_2fa'), 422, 'Your organization requires two-factor authentication; an administrator can reset it.');
+        $tf->disable($this->user());
+
+        return $this->ok(['enabled' => false]);
+    }
+
+    public function twoFactorRecoveryCodes(Request $request, \App\Services\TwoFactorService $tf)
+    {
+        $this->browserOnly($request);
+        $data = $request->validate(['current_password' => ['required', 'string']]);
+        if (! Hash::check($data['current_password'], $this->user()->password)) {
+            throw ValidationException::withMessages(['current_password' => 'Current password is incorrect.']);
+        }
+        abort_unless($this->user()->totp_confirmed_at, 409);
+
+        return $this->ok(['recovery_codes' => $tf->regenerateRecoveryCodes($this->user())]);
+    }
+
+    private function browserOnly(Request $request): void
+    {
+        abort_if($request->attributes->get('api_token') !== null, 403, 'Manage two-factor authentication from the web app.');
+    }
+
     public function notifications(Request $request)
     {
         $types = array_keys(config('leadflow.notification_types'));

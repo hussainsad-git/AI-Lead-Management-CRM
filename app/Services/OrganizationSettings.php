@@ -12,6 +12,7 @@ class OrganizationSettings
         'required_identifier' => 'phone_or_whatsapp', // phone_or_whatsapp | any
         'allow_duplicate_open_leads' => false,
         'first_contact_sla_minutes' => 30,
+        'require_2fa' => false,
         'retention_archive_after_days' => null,   // archive leads closed (won/lost) for this long; null = never
         'retention_purge_webhooks_days' => 30,    // delete processed webhook payloads
         'retention_purge_notifications_days' => 90,

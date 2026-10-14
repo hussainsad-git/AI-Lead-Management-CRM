@@ -187,6 +187,7 @@ body { background: var(--lf-bg); }
 .cursor-pointer { cursor: pointer; }
 .mw-160 { max-width: 160px; }
 .mw-220 { max-width: 220px; }
+.mw-260 { max-width: 260px; }
 .w-auto-sm { width: auto; }
 .hidden { display: none !important; }
 .columns-menu { max-height: 340px; overflow-y: auto; min-width: 220px; }

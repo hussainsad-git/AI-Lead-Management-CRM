@@ -50,3 +50,52 @@
     LF.api('POST', 'profile/password', LF.formData($f), { form: $f }).then(() => { $f[0].reset(); LF.toast(t('Password changed')); });
   });
 })(jQuery, window.LF);
+(function ($, LF) {
+  'use strict';
+  const t = LF.t, esc = LF.esc;
+  const $body = $('#tfaBody'), $badge = $('#tfaBadge');
+  if (!$body.length) return;
+  const codesHtml = codes => `<div class="alert alert-warning small"><div class="fw-semibold mb-1">${t('Recovery codes — save these somewhere safe. Each works once.')}</div><div class="font-monospace">${codes.map(esc).join('<br>')}</div><button class="btn btn-sm btn-light mt-2" type="button" id="tfaCopyCodes">${t('Copy')}</button></div>`;
+  function render(afterHtml) {
+    return LF.api('GET', 'profile/two-factor').then(r => {
+      const s = r.data;
+      $badge.html(s.enabled ? `<span class="badge text-bg-success">${t('Enabled')}</span>` : `<span class="badge ${s.required ? 'text-bg-danger' : 'text-bg-light border'}">${s.required ? t('Required — not set up') : t('Off')}</span>`);
+      if (s.enabled) {
+        $body.html(`<div class="small">${t('Enabled')} ${LF.fmt.date(s.enabled_at)} · ${s.recovery_codes_left} ${t('recovery codes left')}</div>
+          <form class="row g-2 mt-2 align-items-end" id="tfaForm"><div class="col-sm-6"><label class="form-label small" for="tfa-pw">${t('Current password')}</label><input class="form-control form-control-sm" type="password" id="tfa-pw" name="current_password" autocomplete="current-password"></div>
+          <div class="col-sm-6 d-flex gap-2"><button class="btn btn-light btn-sm" type="button" id="tfaRegen">${t('New recovery codes')}</button>${s.required ? '' : `<button class="btn btn-outline-danger btn-sm" type="button" id="tfaDisable">${t('Disable')}</button>`}</div></form><div id="tfaOut" class="mt-2"></div>`);
+      } else {
+        $body.html(`<p class="small text-muted mb-2">${t('Protect your account with a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password…).')}</p><button class="btn btn-primary btn-sm" type="button" id="tfaBegin"><i class="bi bi-shield-lock"></i> ${t('Set up two-factor')}</button><div id="tfaOut" class="mt-3"></div>`);
+        if (location.search.includes('setup=2fa')) $('#tfaBegin').trigger('click');
+      }
+      if (afterHtml) $('#tfaOut').html(afterHtml);
+    });
+  }
+  $(document).on('click', '#tfaBegin', function () {
+    const $b = $(this); LF.busy($b, true);
+    LF.api('POST', 'profile/two-factor/begin').then(r => {
+      $('#tfaOut').html(`<div class="row g-3 align-items-start"><div class="col-auto">${r.data.qr_svg}</div><div class="col">
+        <div class="small">${t('1. Scan the code with your authenticator app, or enter this key manually:')}</div><code class="d-block my-1 user-select-all">${esc(r.data.secret)}</code>
+        <div class="small mb-2">${t('2. Enter the 6-digit code the app shows:')}</div>
+        <form class="input-group input-group-sm mw-260" id="tfaConfirm"><input class="form-control text-center" inputmode="numeric" autocomplete="one-time-code" maxlength="6" name="code" aria-label="${t('Code')}" required><button class="btn btn-primary" type="submit">${t('Confirm')}</button></form></div></div>`);
+      $('#tfaConfirm input').trigger('focus');
+    }).always(() => LF.busy($b, false));
+  });
+  $(document).on('submit', '#tfaConfirm', function (e) {
+    e.preventDefault();
+    const $f = $(this);
+    LF.api('POST', 'profile/two-factor/confirm', { code: $f.find('input').val() }, { form: $f }).then(r => {
+      LF.toast(t('Two-factor enabled'));
+      render(codesHtml(r.data.recovery_codes));
+    });
+  });
+  $(document).on('click', '#tfaCopyCodes', function () { const txt = $(this).siblings('.font-monospace').text(); navigator.clipboard && navigator.clipboard.writeText(txt).then(() => LF.toast(t('Copied'))); });
+  $(document).on('click', '#tfaRegen', function () {
+    LF.api('POST', 'profile/two-factor/recovery-codes', { current_password: $('#tfa-pw').val() }, { form: $('#tfaForm') }).then(r => { $('#tfaOut').html(codesHtml(r.data.recovery_codes)); $('#tfa-pw').val(''); });
+  });
+  $(document).on('click', '#tfaDisable', function () {
+    LF.confirm({ title: t('Disable two-factor?'), body: t('Your account will be protected by your password only.'), danger: true, confirmText: t('Disable') })
+      .then(() => LF.api('POST', 'profile/two-factor/disable', { current_password: $('#tfa-pw').val() }, { form: $('#tfaForm') }).then(() => { LF.toast(t('Two-factor disabled')); render(); }));
+  });
+  render();
+})(jQuery, window.LF);

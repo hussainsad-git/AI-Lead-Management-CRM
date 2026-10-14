@@ -4,6 +4,7 @@
 - Argon2id password hashing (`config/hashing.php`); password policy ≥ 10 chars with letters and numbers; login throttled per email+IP (`throttle:login`).
 - Session rotated on login and on password change; other sessions of the user are revoked on password change. Cookies: `Secure`, `HttpOnly`, `SameSite=Lax`, encrypted, database driver.
 - Deactivated users/organizations are logged out by `ResolveOrganization` on the next request.
+- Two-factor authentication (TOTP, RFC 6238; in-house `App\Support\Totp` + QR renderer `App\Support\Qr`, both unit-tested against reference vectors / decoded with OpenCV): per-user enrolment with QR or manual key, 10 one-time recovery codes (hashed), ±1 step window, replay protection via last-used step, 5-minute pending-login window, rate-limited verification, admin reset (`users.manage`, audited), organization-wide **Require 2FA** policy (unenrolled users are confined to their profile; API tokens unaffected).
 - Personal API tokens: 51-char random, stored SHA-256 hashed, shown once, optional expiry, revocable, max 10 per user, `api.tokens` permission required. A token carries exactly its owner's permissions and organization; tokens cannot create tokens or erase contacts.
 
 ## Authorization & tenancy
@@ -22,6 +23,7 @@
 ## Secrets & integrations
 - Integration credentials stored `encrypted:array` under `APP_KEY`; write-only API (responses expose only "set" + last-4 hint); `$hidden` on the model; never logged.
 - Webhooks: per-business unguessable URL key, verify-token handshake, `X-Hub-Signature-256` HMAC over the raw body with the app secret, replay/duplicate protection by body hash, idempotent processing by provider ids, always-200 after acceptance so Meta does not retry while our queue does.
+- Outbound webhooks (automation action): https only, public hosts only (loopback/private/reserved ranges and `.local`/`.internal` rejected at save time), no credentials in URLs, redirects not followed, 10 s timeout, HMAC-SHA256 signature over `timestamp.body` with a per-rule secret, unique delivery id. Payload = the lead as the API presents it, never internal notes or secrets.
 - Outbound: TLS by default, timeouts, bounded retries with backoff on 429/5xx only, pagination caps.
 - Error responses never include stack traces or secrets in production (`APP_DEBUG=false` enforced by `leadflow:doctor`); exceptions are summarised (class, message, file:line) to platform admins and the optional error webhook — never request bodies.
 
@@ -42,6 +44,5 @@
 - Mass assignment: all Phase 3–6 models extend `TenantModel` (guards `id`, `organization_id`); `User::$fillable` excludes `is_platform_admin`, `organization_id`, `notification_prefs` writes go through explicit `forceFill` in controllers that validated the input.
 
 ## Known limitations
-- No 2FA yet (recommended next: TOTP via a small table + middleware).
 - Session driver `database` is fine to ~50 concurrent users; move sessions/cache/queue to Redis beyond that.
 - Hybrid KB search scans vectors in PHP (capped at 8,000 chunks); beyond that use a vector database.

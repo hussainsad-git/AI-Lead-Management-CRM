@@ -100,3 +100,10 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] `php artisan leadflow:backup` produces a zip; restore it into a scratch database following README → Backup and restore; the app boots against it.
 - [ ] Trigger an error (e.g. temporarily wrong DB password on a sub-feature) → platform admins get one "Application error" notification, not one per request.
 - [ ] Review Settings → Organization → Data retention values with the business owner.
+
+## Two-factor & webhooks
+- [ ] Profile → Set up two-factor: scan with Google Authenticator; wrong code rejected; right code enables and shows 10 recovery codes.
+- [ ] Sign out, sign in → code page; wrong code shows an error; the same code twice is rejected; a recovery code works once.
+- [ ] Settings → Security → Require 2FA: an unenrolled user is sent to their profile and the API returns `two_factor_required`; after enrolling everything works.
+- [ ] Team → shield icon → reset a user's 2FA; they can sign in with password only and are prompted to enrol again.
+- [ ] Automation rule with "Call a webhook" to a Zapier catch hook → the zap receives the lead JSON with `X-LeadFlow-Signature`; a private/http URL is refused when saving.

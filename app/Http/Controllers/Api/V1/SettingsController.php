@@ -60,6 +60,7 @@ class SettingsController extends ApiController
             'settings.required_identifier' => ['required', 'in:phone_or_whatsapp,any'],
             'settings.allow_duplicate_open_leads' => ['required', 'boolean'],
             'settings.first_contact_sla_minutes' => ['required', 'integer', 'min:5', 'max:10080'],
+            'settings.require_2fa' => ['required', 'boolean'],
             'settings.retention_archive_after_days' => ['nullable', 'integer', 'min:30', 'max:3650'],
             'settings.retention_purge_webhooks_days' => ['required', 'integer', 'min:7', 'max:365'],
             'settings.retention_purge_notifications_days' => ['required', 'integer', 'min:7', 'max:365'],
@@ -70,7 +71,7 @@ class SettingsController extends ApiController
         $before = $org->only(['name', 'timezone', 'currency', 'default_country']) + $settings->all();
         $org->update(['name' => $data['name'], 'timezone' => $data['timezone'], 'currency' => strtoupper($data['currency']), 'default_country' => $data['default_country']]);
         foreach ($data['settings'] as $k => $v) {
-            $settings->set($k, $k === 'allow_duplicate_open_leads' ? (bool) $v : ($v === null || $v === '' ? null : (is_numeric($v) ? (int) $v : $v)));
+            $settings->set($k, in_array($k, ['allow_duplicate_open_leads', 'require_2fa'], true) ? (bool) $v : ($v === null || $v === '' ? null : (is_numeric($v) ? (int) $v : $v)));
         }
         $this->audit->log('settings.organization_updated', $org, ['before' => $before, 'after' => $org->only(['name', 'timezone', 'currency', 'default_country']) + $settings->all()]);
 

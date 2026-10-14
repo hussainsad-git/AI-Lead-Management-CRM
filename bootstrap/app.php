@@ -29,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             // Session-authenticated JSON API used by the application UI (CSRF-protected).
-            Route::middleware(['web', 'auth', 'org', 'throttle:api'])
+            Route::middleware(['web', 'auth', 'org', '2fa', 'throttle:api'])
                 ->prefix('api/v1')->name('api.')
                 ->group(base_path('routes/api.php'));
             // Public, signature-verified provider webhooks: no session, no CSRF.
@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['org' => ResolveOrganization::class, 'perm' => RequirePermission::class]);
+        $middleware->alias(['org' => ResolveOrganization::class, 'perm' => RequirePermission::class, '2fa' => \App\Http\Middleware\EnforceTwoFactor::class]);
         // Bearer API tokens: resolved before the session stack; CSRF is skipped only for token-authenticated requests.
         $middleware->web(prepend: [\App\Http\Middleware\AuthenticateApiToken::class]);
         $middleware->replace(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class, \App\Http\Middleware\ValidateCsrfToken::class);

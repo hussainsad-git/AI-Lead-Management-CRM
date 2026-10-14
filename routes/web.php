@@ -7,9 +7,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'show'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::get('/login/2fa', [AuthController::class, 'showTwoFactor']);
+    Route::post('/login/2fa', [AuthController::class, 'verifyTwoFactor'])->middleware('throttle:login');
+    Route::post('/login/2fa/cancel', [AuthController::class, 'cancelTwoFactor']);
 });
 
-Route::middleware(['auth', 'org'])->group(function () {
+Route::middleware(['auth', 'org', '2fa'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/', [PageController::class, 'home'])->name('home');
     Route::get('/profile', [PageController::class, 'profile']);

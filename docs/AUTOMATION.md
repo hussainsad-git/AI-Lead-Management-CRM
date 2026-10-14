@@ -11,7 +11,7 @@ A rule is **trigger → conditions → actions**, stored in `automation_rules` (
 
 **Fields** (`status` by meaning, `source`, `priority`, `score_label`, `platform`, `campaign`, `assigned`, `has_pending_task`, `contact_attempts`, `unanswered_attempts`, `call_outcome`, `product_interest`, `city`, `budget_amount`, `task_priority`) with type-appropriate operators; `match: all|any`.
 
-**Actions**: `assign_round_robin {team_id?}` (skips already-assigned leads), `assign_user`, `create_task {purpose, in_minutes, priority?}`, `notify_owner`, `notify_manager` (team manager, else admins/sales managers, never the owner twice), `notify_users`, `set_priority`, `add_tag`, `move_stage` (open stages only; closed leads are skipped), `cancel_tasks`, `send_whatsapp_template` (approved template, respects suppression and the 24-hour rules of the messaging service). Placeholders `{name} {phone} {owner} {interest} {lead_id}`.
+**Actions**: `assign_round_robin {team_id?}` (skips already-assigned leads), `assign_user`, `create_task {purpose, in_minutes, priority?}`, `notify_owner`, `notify_manager` (team manager, else admins/sales managers, never the owner twice), `notify_users`, `set_priority`, `add_tag`, `move_stage` (open stages only; closed leads are skipped), `cancel_tasks`, `send_whatsapp_template` (approved template, respects suppression and the 24-hour rules of the messaging service), `call_webhook {url, secret?}` (POST JSON to Zapier/Make/your system; see *Outbound webhooks*). Placeholders `{name} {phone} {owner} {interest} {lead_id}`.
 
 **Safety rails that are not rules** (so a paused rule can never switch them off): opt-out cancels open tasks and blocks messaging; a requested callback always creates its task; `create_task` and `send_whatsapp_template` are refused on `lead.opted_out` rules; closed/opted-out leads never get tasks.
 
@@ -32,3 +32,8 @@ A rule is **trigger → conditions → actions**, stored in `automation_rules` (
 
 ## Notifications & email
 `NotificationService::notify()` inserts once per `(user, dedupe_key)`. If the user's email preference for the type is on (defaults in `config/leadflow.php → notification_types`) **and** `MAIL_MAILER` is a real transport, a `SendNotificationEmail` job sends `NotificationMail` and stamps `emailed_at` (claimed before sending, so retries never double-send; already-read notifications are not emailed). Users manage preferences on *My profile → Email notifications*; the page says plainly when the server has no mailer configured.
+
+## Outbound webhooks
+Action `call_webhook` POSTs `{"event":"automation.<trigger>","sent_at":…, "rule":{id,name}, "trigger", "execution_id", "context":{…}, "lead":{…as GET /api/v1/leads/{id}…}, "organization":{id,name}, "url"}`. Headers: `X-LeadFlow-Event`, `X-LeadFlow-Delivery` (uuid — use for de-duplication), `X-LeadFlow-Timestamp`, and when a secret is set `X-LeadFlow-Signature: sha256=HMAC_SHA256(secret, "<timestamp>.<raw body>")`. Verify with constant-time comparison and reject timestamps older than 5 minutes. Non-2xx or unreachable endpoints mark the action failed in the execution history (retried twice on 5xx/connection errors, never on 4xx). URLs must be https and public (SSRF guard).
+
+Zapier: *Webhooks by Zapier → Catch Hook* → paste the URL into the action. Make: *Webhooks → Custom webhook*. Typical rules: `lead.created` → push to a Google Sheet; `lead.qualified` → Slack message; `lead.status_changed` → update an external system.

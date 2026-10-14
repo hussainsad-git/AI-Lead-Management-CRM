@@ -197,9 +197,24 @@ class AutomationEngine
                 $m = app(MessagingService::class)->sendTemplate($c->load('contact', 'lead'), $tpl, $params, null);
 
                 return 'template sent ('.$m->status.')';
+            case 'call_webhook':
+                return app(\App\Services\OutboundWebhook::class)->send((string) $a['url'], (string) ($a['secret'] ?? ''), 'automation.'.$exec->trigger, $this->webhookPayload($lead, $rule, $exec, $ctx));
             default:
                 throw new DomainRuleException('Unknown action.');
         }
+    }
+
+    /** What external systems receive: the lead as the API presents it (no internal notes, no secrets). */
+    private function webhookPayload(Lead $lead, AutomationRule $rule, AutomationExecution $exec, array $ctx): array
+    {
+        $lead->loadMissing('contact', 'status', 'source', 'assignee', 'tags', 'firstTouch');
+
+        return [
+            'rule' => ['id' => $rule->id, 'name' => $rule->name], 'trigger' => $exec->trigger, 'execution_id' => $exec->id, 'context' => $ctx,
+            'lead' => (new \App\Http\Resources\LeadResource($lead))->resolve(),
+            'organization' => ['id' => $lead->organization_id, 'name' => $this->org->require()->name],
+            'url' => url('/leads/'.$lead->id),
+        ];
     }
 
     /** Placeholders: {name} {phone} {owner} {interest} {lead_id} */

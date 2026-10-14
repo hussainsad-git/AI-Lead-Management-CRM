@@ -2,14 +2,19 @@
   'use strict';
   let users = [], teams = [], roles = [], editing = null, editingTeam = null;
 
+  $(document).on('click', '[data-reset-2fa]', function () {
+    const id = $(this).data('reset-2fa'), u = users.find(x => x.id === id);
+    LF.confirm({ title: 'Reset two-factor authentication', body: `${u.name} will be signed out and can sign in with their password only until they enrol again. Do this only after verifying their identity.`, danger: true, confirmText: 'Reset' })
+      .then(() => LF.api('POST', `users/${id}/reset-two-factor`).then(() => { LF.toast('Two-factor reset'); load(); }));
+  });
   function load() {
     return $.when(LF.api('GET', 'users'), LF.api('GET', 'teams'), LF.api('GET', 'roles')).then((u, t, r) => {
       users = u.data; teams = t.data; roles = r.data.roles;
       $('#usersBody').html(users.map(x => `<tr class="${x.is_active ? '' : 'text-muted'}"><td><strong>${LF.esc(x.name)}</strong><div class="cell-muted">${LF.esc(x.email)}</div></td>
         <td>${x.roles.map(r => `<span class="tag">${LF.esc(r.name)}</span>`).join('')}</td><td>${LF.esc(x.team ? x.team.name : '—')}</td><td class="text-end">${x.open_leads}</td>
         <td>${x.accepts_assignments ? '<i class="bi bi-check2 text-success" aria-label="Yes"></i>' : '<span class="cell-muted">No</span>'}</td>
-        <td class="small">${x.last_login_at ? LF.fmt.rel(x.last_login_at) : 'Never'}</td><td>${x.is_active ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Inactive</span>'}</td>
-        <td class="text-end"><button class="btn btn-sm btn-light" data-user="${x.id}" aria-label="Edit ${LF.esc(x.name)}"><i class="bi bi-pencil"></i></button></td></tr>`).join(''));
+        <td class="small">${x.last_login_at ? LF.fmt.rel(x.last_login_at) : 'Never'}${x.two_factor ? ' <i class="bi bi-shield-lock-fill text-success" title="Two-factor enabled" aria-label="Two-factor enabled"></i>' : ''}</td><td>${x.is_active ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Inactive</span>'}</td>
+        <td class="text-end text-nowrap">${x.two_factor ? `<button class="btn btn-sm btn-light" data-reset-2fa="${x.id}" title="Reset two-factor" aria-label="Reset two-factor for ${LF.esc(x.name)}"><i class="bi bi-shield-slash"></i></button> ` : ''}<button class="btn btn-sm btn-light" data-user="${x.id}" aria-label="Edit ${LF.esc(x.name)}"><i class="bi bi-pencil"></i></button></td></tr>`).join(''));
       $('#teamsList').html(teams.length ? teams.map(t => `<li class="list-group-item d-flex align-items-center"><div><strong>${LF.esc(t.name)}</strong><div class="small text-muted">Manager: ${LF.esc(t.manager ? t.manager.name : '—')} · ${t.members_count} member(s)</div></div><button class="btn btn-sm btn-light ms-auto" data-team="${t.id}" aria-label="Edit team"><i class="bi bi-pencil"></i></button></li>`).join('') : '<li class="list-group-item small text-muted">No teams yet.</li>');
     });
   }

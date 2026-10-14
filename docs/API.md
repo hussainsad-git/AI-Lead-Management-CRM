@@ -10,6 +10,9 @@ curl -s -X POST https://crm.example.com/api/v1/leads -H "Authorization: Bearer l
   -d '{"contact":{"name":"Ali","phone":"03001234567"},"lead_source_id":5,"product_interest":"5 marla plot","attribution":{"platform":"web","source":"landing_page","campaign_name":"Oct plots"}}'
 ```
 
+### Two-factor & tokens
+`GET profile/two-factor`, `POST profile/two-factor/begin` (returns secret, otpauth URI and QR SVG), `POST profile/two-factor/confirm {code}` (returns 10 recovery codes once), `POST profile/two-factor/disable {current_password}`, `POST profile/two-factor/recovery-codes {current_password}`; admins: `POST users/{id}/reset-two-factor`. Browser session only. When the organization requires 2FA, unenrolled session users get `403 two_factor_required` on every other endpoint.
+
 ## Conventions
 
 Success: `{"data": ..., "meta": {...}}`. Paginated lists: `meta = {page, per_page, total, last_page}`; `?page=&per_page=` (5–100).

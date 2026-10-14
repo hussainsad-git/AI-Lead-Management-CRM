@@ -21,6 +21,9 @@
             <div class="col-md-6"><label class="form-label" for="o-sla">First-contact target (minutes)</label><input class="form-control" type="number" min="5" max="10080" id="o-sla" name="settings[first_contact_sla_minutes]"><div class="form-text">Used by the "First-contact SLA missed" automation rule.</div></div>
             <div class="col-md-6 align-self-end"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="o-dup" name="settings[allow_duplicate_open_leads]" value="1"><label class="form-check-label" for="o-dup">Allow more than one open lead per contact without confirmation</label></div></div>
         </div>
+        <h3 class="fs-6 mt-4 mb-2">Security</h3>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="o-2fa" name="settings[require_2fa]" value="1"><label class="form-check-label" for="o-2fa">Require two-factor authentication for every user</label></div>
+        <div class="form-text">Users without an authenticator app set up are sent to their profile to enrol before they can use the CRM. Make sure you have enrolled yourself first.</div>
         <h3 class="fs-6 mt-4 mb-2">Data retention</h3>
         <div class="row g-3">
             <div class="col-md-4"><label class="form-label" for="o-ret-archive">Archive closed leads after (days)</label><input class="form-control" type="number" min="30" max="3650" id="o-ret-archive" name="settings[retention_archive_after_days]" placeholder="never"><div class="form-text">Won/lost leads older than this are archived (hidden from lists, kept for reports). Leave empty to keep forever.</div></div>
