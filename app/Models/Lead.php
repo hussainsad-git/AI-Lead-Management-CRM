@@ -81,6 +81,11 @@ class Lead extends TenantModel
         return $this->hasMany(Activity::class);
     }
 
+    public function telephonyCalls(): HasMany
+    {
+        return $this->hasMany(TelephonyCall::class);
+    }
+
     public function callTasks(): HasMany
     {
         return $this->hasMany(CallTask::class);

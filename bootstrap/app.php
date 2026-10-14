@@ -39,6 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 Route::get('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])->where('key', '[A-Za-z0-9]{40}');
                 Route::post('meta/{key}', [\App\Http\Controllers\MetaWebhookController::class, 'receive'])->where('key', '[A-Za-z0-9]{40}');
             });
+            // Telephony provider callbacks (Twilio): signature-verified with the account auth token.
+            Route::middleware(['throttle:webhooks'])->prefix('webhooks/telephony/{key}')->where(['key' => '[A-Za-z0-9]{40}', 'call' => '[0-9]+'])->group(function () {
+                Route::post('twiml/{call}', [\App\Http\Controllers\TelephonyWebhookController::class, 'twiml']);
+                Route::post('status/{call}', [\App\Http\Controllers\TelephonyWebhookController::class, 'status']);
+                Route::post('dial-status/{call}', [\App\Http\Controllers\TelephonyWebhookController::class, 'dialStatus']);
+                Route::post('recording/{call}', [\App\Http\Controllers\TelephonyWebhookController::class, 'recording']);
+            });
             // Public website/landing-page form capture: per-form key, origin allow-list, honeypot, tighter per-IP throttle.
             Route::middleware(['throttle:forms'])->prefix('webhooks/forms')->group(function () {
                 Route::options('{key}', [\App\Http\Controllers\WebFormController::class, 'options'])->where('key', '[A-Za-z0-9]{40}');

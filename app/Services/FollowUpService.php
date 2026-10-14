@@ -83,7 +83,8 @@ class FollowUpService
             $this->activity->forLead($lead, 'call_logged', $data['notes'] ?? null, [
                 'task_id' => $task->id, 'outcome' => $outcome->name, 'outcome_key' => $outcome->key,
                 'connected' => $outcome->is_connected, 'attempt' => $task->attempt_number,
-                'duration_seconds' => $task->duration_seconds,
+                'duration_seconds' => $task->duration_seconds, 'duration_source' => $data['duration_source'] ?? ($task->duration_seconds ? 'entered' : null),
+                'telephony_call_id' => $data['telephony_call_id'] ?? null,
             ]);
 
             if ($outcome->advances_to_semantic) {

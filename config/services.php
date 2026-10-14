@@ -2,6 +2,10 @@
 
 return [
 
+    'twilio' => [
+        'api_url' => env('TWILIO_API_URL', 'https://api.twilio.com'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

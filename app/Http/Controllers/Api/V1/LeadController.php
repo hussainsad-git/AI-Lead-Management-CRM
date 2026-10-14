@@ -68,6 +68,7 @@ class LeadController extends ApiController
             'consent_records' => $lead->contact->consents()->limit(20)->get(['channel', 'status', 'source', 'evidence', 'recorded_at']),
             'other_leads' => $visibleOther->map(fn ($l) => ['id' => $l->id, 'status' => $l->status->name, 'created_at' => $l->created_at->toIso8601ZuluString()])->values(),
             'hidden_other_leads' => $other->count() - $visibleOther->count(),
+            'telephony' => app(\App\Services\Telephony\TelephonyService::class)->availability($lead, $this->user()),
             'conversation_id' => $this->user()->hasPermission('whatsapp.view') ? \App\Models\Conversation::where('contact_id', $lead->contact_id)->value('id') : null,
             'call_tasks' => CallTaskResource::collection($lead->callTasks()->with(['outcome', 'assignee'])->latest('scheduled_at')->limit(50)->get()),
             'appointments' => AppointmentResource::collection($lead->appointments()->with('assignee')->latest('starts_at')->get()),
@@ -153,7 +154,16 @@ class LeadController extends ApiController
     public function logCall(LogCallRequest $request, Lead $lead, FollowUpService $followUps)
     {
         $this->visibleLead($lead);
-        $task = $followUps->logCall($lead->load('status', 'contact'), null, $request->validated());
+        $data = $request->validated();
+        $tcall = ! empty($data['telephony_call_id']) ? \App\Models\TelephonyCall::where('lead_id', $lead->id)->find($data['telephony_call_id']) : null;
+        if ($tcall && ($data['duration_minutes'] ?? '') === '' && $tcall->talk_seconds) {
+            $data['duration_minutes'] = $tcall->talk_seconds / 60; // provider-measured customer-leg duration
+            $data['duration_source'] = 'twilio';
+        }
+        $task = $followUps->logCall($lead->load('status', 'contact'), null, $data);
+        if ($tcall) {
+            $tcall->forceFill(['outcome_logged' => true])->save();
+        }
 
         return $this->ok(new CallTaskResource($task->load(['assignee', 'outcome'])), [], 201);
     }

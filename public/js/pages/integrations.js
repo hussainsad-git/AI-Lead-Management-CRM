@@ -13,8 +13,12 @@
       secrets: [['access_token', t('System-user access token (ads_read, leads_retrieval)')], ['app_secret', t('App secret')], ['page_access_token', t('Page access token (optional, if the system user lacks Page access)')]],
     },
     deepseek: { config: [['default_model', t('Default model'), 'deepseek-v4-flash'], ['base_url', t('Base URL (optional)'), 'https://api.deepseek.com']], secrets: [['api_key', t('API key')]] },
+    twilio_voice: {
+      config: [['account_sid', t('Account SID'), 'AC…'], ['from_number', t('Caller ID number (E.164)'), '+1…'], ['agent_prompt', t('Message played to the salesperson before connecting'), t('Connecting you to the customer.')], ['record_calls', t('Record calls (1 = yes; check local consent law)'), '0']],
+      secrets: [['auth_token', t('Auth token')]],
+    },
   };
-  const ICON = { whatsapp_cloud: 'whatsapp', openai: 'stars', deepseek: 'cpu', meta_marketing: 'megaphone' };
+  const ICON = { whatsapp_cloud: 'whatsapp', openai: 'stars', deepseek: 'cpu', meta_marketing: 'megaphone', twilio_voice: 'telephone-outbound' };
 
   function card(i) {
     const f = FIELDS[i.key];
@@ -28,7 +32,8 @@
       <input class="form-control form-control-sm" id="${i.key}-${k}" name="config[${k}]" value="${LF.esc(i.config[k] || '')}" placeholder="${LF.esc(ph || '')}" autocomplete="off"></div>`).join('');
     const sec = f.secrets.map(([k, label]) => `<div class="col-md-6"><label class="form-label small" for="${i.key}-${k}">${LF.esc(label)}</label>
       <input class="form-control form-control-sm" type="password" id="${i.key}-${k}" name="secrets[${k}]" autocomplete="new-password" placeholder="${i.secrets[k].set ? t('Saved') + ' ' + (i.secrets[k].hint || '') + ' — ' + t('leave blank to keep') : t('Not set')}"></div>`).join('');
-    const meta = i.key === 'meta_marketing' ? metaExtras(i) : '';
+    const meta = i.key === 'meta_marketing' ? metaExtras(i) : (i.key === 'twilio_voice' ? `<div class="col-12 small text-muted">${i.config.account_name ? `<i class="bi bi-building"></i> ${LF.esc(i.config.account_name)} (${LF.esc(i.config.account_type || '')}) · ` : ''}${t('Calls (30 days)')}: ${i.calls_30d} · ${t('Failed (7 days)')}: ${i.calls_failed_7d} · ${t('Last callback')}: ${i.last_webhook_at ? LF.fmt.rel(i.last_webhook_at) : t('never')}
+      <div class="mt-1">${t('Click-to-call appears on lead pages for salespeople who have a phone number on their profile. Callback URLs are sent to Twilio with each call; no webhook setup is needed in the Twilio console.')}</div></div>` : '');
     const wa = i.key === 'whatsapp_cloud' ? `
       <div class="col-12"><hr class="my-1"><div class="small-caps mb-1">${t('Webhook (paste into Meta App → WhatsApp → Configuration)')}</div>
         ${i.webhook_url ? `<div class="input-group input-group-sm mb-1"><span class="input-group-text">${t('Callback URL')}</span><input class="form-control" readonly value="${LF.esc(i.webhook_url)}" id="whUrl" aria-label="${t('Callback URL')}"><button class="btn btn-light" type="button" data-copy="#whUrl">${t('Copy')}</button></div>

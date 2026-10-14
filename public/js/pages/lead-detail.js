@@ -9,7 +9,7 @@
     follow_up_cancelled: ['x-circle', ''], appointment_scheduled: ['calendar-event', ''], appointment_completed: ['calendar-check', ''],
     appointment_cancelled: ['calendar-x', ''], appointment_no_show: ['calendar-x', 'tl-warn'], lead_updated: ['pencil', ''], contact_updated: ['pencil', ''],
     opt_out: ['slash-circle', 'tl-warn'], consent_granted: ['shield-check', ''], consent_withdrawn: ['shield-x', 'tl-warn'], archived: ['archive', 'tl-warn'],
-    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''], whatsapp_in: ['whatsapp', 'tl-call'], whatsapp_out: ['send', ''], ai_qualified: ['stars', 'tl-status'], form_submitted: ['ui-checks', 'tl-call'], web_form_submission: ['globe', 'tl-call'], audience_added: ['diagram-3', ''], audience_removed: ['diagram-3', ''],
+    contact_merged: ['union', ''], import_update: ['arrow-down-up', ''], whatsapp_in: ['whatsapp', 'tl-call'], whatsapp_out: ['send', ''], ai_qualified: ['stars', 'tl-status'], form_submitted: ['ui-checks', 'tl-call'], web_form_submission: ['globe', 'tl-call'], call_placed: ['telephone-outbound', 'tl-call'], call_ended: ['telephone-x', ''], audience_added: ['diagram-3', ''], audience_removed: ['diagram-3', ''],
   };
 
   function tlText(a) {
@@ -17,7 +17,7 @@
     switch (a.type) {
       case 'lead_created': return 'Lead created' + (m.via ? ` (${LF.esc(m.via)})` : '');
       case 'note': return 'Note';
-      case 'call_logged': return `Call: <strong>${LF.esc(m.outcome || '')}</strong>${m.attempt ? ` · attempt ${m.attempt}` : ''}${m.duration_seconds ? ` · ${Math.round(m.duration_seconds / 60)} min (entered)` : ''}${m.imported ? ' · imported' : ''}`;
+      case 'call_logged': return `Call: <strong>${LF.esc(m.outcome || '')}</strong>${m.attempt ? ` · attempt ${m.attempt}` : ''}${m.duration_seconds ? ` · ${Math.round(m.duration_seconds / 60)} min (${LF.esc(m.duration_source === 'twilio' ? LF.t('measured by Twilio') : LF.t('entered'))})` : ''}${m.imported ? ' · imported' : ''}`;
       case 'status_changed': return `Status: ${LF.esc(m.from || '—')} → <strong>${LF.esc(m.to)}</strong>${m.via && m.via !== 'user' ? ` <span class="text-muted">(${LF.esc(LF.fmt.label(m.via))})</span>` : ''}`;
       case 'assigned': case 'reassigned': return `${m.from ? 'Reassigned from ' + LF.esc(m.from) + ' to ' : 'Assigned to '}<strong>${LF.esc(m.to || 'nobody')}</strong>`;
       case 'follow_up_scheduled': return `Follow-up scheduled for ${LF.fmt.dateTime(m.scheduled_at)}`;
@@ -28,12 +28,38 @@
       case 'whatsapp_out': return `${LF.t('WhatsApp reply')} <span class="text-muted">(${LF.esc(LF.fmt.label(m.sender || 'user'))})</span>`;
       case 'audience_added': return `${LF.t('Added to audience')} <strong>${LF.esc(m.segment)}</strong>${m.eligible === false ? ` <span class="text-muted">(${LF.t('not eligible for export')})</span>` : ''}`;
       case 'audience_removed': return `${LF.t('Left audience')} <strong>${LF.esc(m.segment)}</strong>`;
+      case 'call_placed': return `${LF.t('Click-to-call started')} → ${LF.esc(m.to || '')}`;
+      case 'call_ended': return `${LF.t('Call ended')}: <strong>${LF.esc(LF.fmt.label(m.customer_leg || m.status || ''))}</strong>${m.talk_seconds ? ` · ${Math.round(m.talk_seconds / 60 * 10) / 10} min ${LF.t('talk time')}` : ''}${m.error ? ` <span class="text-danger">${LF.esc(m.error)}</span>` : ''} <span class="text-muted">(${LF.t('from provider')})</span>`;
       case 'web_form_submission': return `${LF.t('Website form submitted again')}${m.form ? ': <strong>' + LF.esc(m.form) + '</strong>' : ''}${m.interest ? ` · ${LF.esc(m.interest)}` : ''}`;
       case 'form_submitted': return `${LF.t('Instant Form submitted again')}${m.form ? ': <strong>' + LF.esc(m.form) + '</strong>' : ''}`;
       case 'ai_qualified': return `${LF.t('AI captured')}: ` + Object.entries(m.filled || {}).map(([k, v]) => `${LF.esc(LF.fmt.label(k))} = <strong>${LF.esc(v)}</strong>`).join(', ');
       case 'lead_updated': case 'contact_updated': return 'Updated ' + Object.keys(m.changes || {}).map(k => LF.esc(LF.fmt.label(k.replace('contact.', '')))).join(', ');
       default: return LF.esc(LF.fmt.label(a.type));
     }
+  }
+
+  // Click-to-call through the connected telephony provider. Hidden entirely when no provider is connected;
+  // shown disabled with the real reason otherwise (no phone on profile, opt-out, call in progress).
+  function dialButton(t, allowed) {
+    if (!t || t.reason === 'telephony_not_connected' || !allowed) return '';
+    const reasons = { agent_phone_missing: LF.t('Add your phone number on your profile first'), no_phone: LF.t('No phone number'), suppressed: LF.t('Opted out of calls'), call_in_progress: LF.t('You have a call in progress') };
+    return `<button class="btn btn-success btn-sm" data-act="dial" ${t.available ? '' : 'disabled'} title="${LF.esc(t.available ? LF.t('Rings your phone, then connects the customer') : (reasons[t.reason] || ''))}"><i class="bi bi-telephone-outbound"></i> ${LF.t('Click-to-call')}</button>
+      <span id="dialStatus" class="small align-self-center"></span>`;
+  }
+  let dialTimer = null;
+  function watchCall(id) {
+    clearInterval(dialTimer);
+    const labels = { queued: LF.t('Starting…'), initiated: LF.t('Starting…'), ringing: LF.t('Ringing your phone…'), 'in-progress': LF.t('Connected — dialing customer'), completed: LF.t('Call ended'), busy: LF.t('Busy'), 'no-answer': LF.t('No answer'), failed: LF.t('Failed'), canceled: LF.t('Cancelled') };
+    const tick = () => LF.api('GET', `telephony-calls/${id}`, null, { silent: true }).then(r => {
+      const c = r.data; $('#dialStatus').html(`<i class="bi bi-circle-fill ${c.open ? 'text-success' : 'text-muted'} me-1"></i>${LF.esc(labels[c.status] || c.status)}${c.error ? ` · <span class="text-danger">${LF.esc(c.error)}</span>` : ''}`);
+      if (!c.open) {
+        clearInterval(dialTimer);
+        $('#dialStatus').append(` <button class="btn btn-link btn-sm p-0 align-baseline" data-act="log-call" data-tcall="${c.id}" data-talk="${c.talk_seconds || 0}">${LF.t('Log outcome')}</button>`);
+        load();
+      }
+    });
+    tick(); dialTimer = setInterval(tick, 3000);
+    setTimeout(() => clearInterval(dialTimer), 10 * 60 * 1000);
   }
 
   function dl(rows) {
@@ -59,6 +85,7 @@
       </div>
       <div class="lf-actions">
         ${c.phone && !dnc ? `<a class="btn btn-light btn-sm" href="tel:${LF.esc(c.phone)}"><i class="bi bi-telephone"></i> Call</a>` : ''}
+        ${dialButton(D.telephony, canFU && !closed && !dnc)}
         ${D.conversation_id ? `<a class="btn btn-light btn-sm" href="/whatsapp?c=${D.conversation_id}"><i class="bi bi-chat-dots"></i> ${LF.t('Conversation')}</a>` : (wa && !dnc ? `<a class="btn btn-light btn-sm" href="${wa}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : '')}
         ${canFU && !closed ? '<button class="btn btn-primary btn-sm" data-act="log-call"><i class="bi bi-journal-check"></i> Log call</button>' : ''}
         ${canFU && !closed && !dnc ? '<button class="btn btn-light btn-sm" data-act="follow-up"><i class="bi bi-alarm"></i> Follow-up</button>' : ''}
@@ -210,7 +237,11 @@
 
   $(document).on('click', '[data-act]', function () {
     const act = $(this).data('act'), l = D.lead;
-    if (act === 'log-call') LF.callModal.open({ leadId, context: l.contact.display_name + (l.contact.phone ? ' · ' + l.contact.phone : ''), onSaved: load });
+    if (act === 'log-call') LF.callModal.open({ leadId, context: l.contact.display_name + (l.contact.phone ? ' · ' + l.contact.phone : ''), onSaved: load, telephonyCallId: $(this).data('tcall') || null, talkSeconds: Number($(this).data('talk') || 0) });
+    if (act === 'dial') {
+      const $b = $(this); LF.busy($b, true);
+      LF.api('POST', `leads/${leadId}/dial`).then(r => { LF.toast(LF.t('Calling your phone…')); watchCall(r.data.id); }).always(() => LF.busy($b, false));
+    }
     if (act === 'follow-up') LF.followUpModal.open({ leadId, onSaved: load });
     if (act === 'appt') LF.apptModal.open({ leadId, onSaved: load });
     if (act === 'archive') LF.confirm({ title: 'Archive lead', body: 'Archived leads are hidden from lists and pending follow-ups are cancelled.', reason: true, reasonRequired: true, danger: true, confirmText: 'Archive' })
@@ -266,5 +297,8 @@
     LF.api('PATCH', 'appointments/' + $(this).data('appt'), { status: this.value }).then(() => { LF.toast('Appointment updated'); load(); });
   });
 
-  load().fail(err => { if (err && err.status === 404) $('#leadRoot').html(LF.empty('question-circle', 'Lead not found or not shared with you.')); });
+  load().then(() => {
+    const q = new URLSearchParams(location.search).get('log_call');
+    if (q && D && D.lead) LF.api('GET', `telephony-calls/${q}`, null, { silent: true }).then(r => LF.callModal.open({ leadId, context: D.lead.contact.display_name, onSaved: load, telephonyCallId: r.data.id, talkSeconds: r.data.talk_seconds || 0 }));
+  }).fail(err => { if (err && err.status === 404) $('#leadRoot').html(LF.empty('question-circle', 'Lead not found or not shared with you.')); });
 })(jQuery, window.LF);

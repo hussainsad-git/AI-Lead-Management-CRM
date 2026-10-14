@@ -334,6 +334,8 @@
       this.o = o;
       openForm('callModal', 'callForm', ($f) => {
         $('#callModalContext').text(o.context || '');
+        $('#cf-tcall').val(o.telephonyCallId || '');
+        if (o.talkSeconds) { $('#cf-duration').val(Math.round(o.talkSeconds / 60 * 10) / 10).attr('placeholder', ''); }
         $('#cf-callback-wrap').addClass('hidden');
         $('#cf-callback').val(LF.tomorrowAt(11));
       });

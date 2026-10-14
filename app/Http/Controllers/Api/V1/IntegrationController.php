@@ -30,6 +30,7 @@ class IntegrationController extends ApiController
         'openai' => ['secrets' => ['api_key'], 'config' => ['default_model', 'embedding_model', 'base_url']],
         'deepseek' => ['secrets' => ['api_key'], 'config' => ['default_model', 'base_url']],
         'meta_marketing' => ['secrets' => ['access_token', 'app_secret', 'verify_token', 'page_access_token'], 'config' => ['ad_account_id', 'page_id', 'api_version', 'initial_days', 'lead_ads_enabled']],
+        'twilio_voice' => ['secrets' => ['auth_token'], 'config' => ['account_sid', 'from_number', 'record_calls', 'agent_prompt']],
     ];
 
     private function guard(): void
@@ -43,7 +44,7 @@ class IntegrationController extends ApiController
         $i = Integration::where('provider', $provider)->first();
         if (! $i && $create) {
             $i = Integration::create(['provider' => $provider, 'status' => 'not_configured', 'config' => [],
-                'webhook_key' => in_array($provider, ['whatsapp_cloud', 'meta_marketing'], true) ? Str::random(40) : null]);
+                'webhook_key' => in_array($provider, ['whatsapp_cloud', 'meta_marketing', 'twilio_voice'], true) ? Str::random(40) : null]);
         }
 
         return $i;
@@ -75,9 +76,14 @@ class IntegrationController extends ApiController
         $rules['config.page_id'] = ['nullable', 'regex:/^\d{5,25}$/'];
         $rules['config.initial_days'] = ['nullable', 'integer', 'min:1', 'max:90'];
         $rules['config.lead_ads_enabled'] = ['nullable', 'boolean'];
+        $rules['config.account_sid'] = ['nullable', 'regex:/^AC[0-9a-fA-F]{32}$/'];
+        $rules['config.from_number'] = ['nullable', 'regex:/^\+[1-9]\d{6,14}$/'];
+        $rules['config.record_calls'] = ['nullable', 'boolean'];
+        $rules['config.agent_prompt'] = ['nullable', 'string', 'max:120'];
         $rules['enabled'] = ['sometimes', 'boolean'];
         $data = $request->validate($rules, [], ['config.ad_account_id' => 'ad account ID', 'config.page_id' => 'Page ID', 'config.phone_number_id' => 'phone number ID',
-            'config.waba_id' => 'WhatsApp Business Account ID', 'config.api_version' => 'API version', 'config.initial_days' => 'days of spend']);
+            'config.waba_id' => 'WhatsApp Business Account ID', 'config.api_version' => 'API version', 'config.initial_days' => 'days of spend',
+            'config.account_sid' => 'Account SID (starts with AC)', 'config.from_number' => 'caller ID number (E.164, e.g. +1415…)']);
 
         $i = $this->find($provider, true);
         $config = array_merge($i->config ?? [], array_filter($data['config'] ?? [], fn ($v) => $v !== null));
@@ -139,13 +145,23 @@ class IntegrationController extends ApiController
                 $detail['page_name'] = $meta->verifyPage();
                 $i->config = array_merge($i->config ?? [], ['account_name' => $detail['account_name'], 'account_currency' => $detail['currency'],
                     'account_timezone' => $detail['timezone'], 'page_name' => $detail['page_name']]);
+            } elseif ($provider === 'twilio_voice') {
+                $tw = \App\Services\Telephony\TwilioClient::for($i);
+                if (! $tw->configured()) {
+                    throw new DomainRuleException('Account SID, auth token and a caller ID number are required.', 'not_configured');
+                }
+                $detail = $tw->verify();
+                if ($detail['status'] !== 'active') {
+                    throw new \App\Services\Telephony\TelephonyException('Twilio account status is "'.$detail['status'].'"');
+                }
+                $i->config = array_merge($i->config ?? [], ['account_name' => $detail['friendly_name'], 'account_type' => $detail['type']]);
             } else {
                 $client = $providers->client($provider) ?? throw new DomainRuleException('API key is required.', 'not_configured');
                 $models = $client->models();
                 $detail = ['models_available' => count($models)];
             }
             $i->forceFill(['status' => 'connected', 'verified_at' => now(), 'last_success_at' => now(), 'last_error' => null])->save();
-        } catch (WhatsAppException|AiException|MetaException $e) {
+        } catch (WhatsAppException|AiException|MetaException|\App\Services\Telephony\TelephonyException $e) {
             $i->markError($e->getMessage());
             throw new DomainRuleException('Connection test failed: '.$e->getMessage(), 'connection_failed', 422);
         }
@@ -229,7 +245,7 @@ class IntegrationController extends ApiController
     private function present(string $provider, ?Integration $i): array
     {
         $spec = self::PROVIDERS[$provider];
-        $names = ['whatsapp_cloud' => 'WhatsApp Business Platform (Cloud API)', 'openai' => 'OpenAI', 'deepseek' => 'DeepSeek', 'meta_marketing' => 'Meta Marketing API & Lead Ads'];
+        $names = ['whatsapp_cloud' => 'WhatsApp Business Platform (Cloud API)', 'openai' => 'OpenAI', 'deepseek' => 'DeepSeek', 'meta_marketing' => 'Meta Marketing API & Lead Ads', 'twilio_voice' => 'Twilio Voice (click-to-call)'];
         $out = [
             'key' => $provider, 'name' => $names[$provider], 'status' => $i?->status ?? 'not_configured',
             'config' => collect($spec['config'])->mapWithKeys(fn ($k) => [$k => $i?->cfg($k)])->all()
@@ -262,6 +278,16 @@ class IntegrationController extends ApiController
                 'Lead Ads: leads_retrieval, pages_show_list, pages_read_engagement, pages_manage_ads, pages_manage_metadata; the Page assigned to the system user (or a Page access token)',
                 'App secret (webhook signatures) and the webhook below subscribed to the Page "leadgen" field (Meta App → Webhooks → Page)',
                 'Advanced Access for leads_retrieval is required to receive leads from forms you do not own; standard access covers your own Pages'];
+        } elseif ($provider === 'twilio_voice') {
+            $out['config'] += ['account_name' => $i?->cfg('account_name'), 'account_type' => $i?->cfg('account_type')];
+            $out['last_webhook_at'] = $i?->last_webhook_at?->toIso8601ZuluString();
+            $out['calls_30d'] = $i ? \App\Models\TelephonyCall::where('created_at', '>', now()->subDays(30))->count() : 0;
+            $out['calls_failed_7d'] = $i ? \App\Models\TelephonyCall::where('status', 'failed')->where('created_at', '>', now()->subDays(7))->count() : 0;
+            $out['requirements'] = ['Twilio account (upgraded, not trial, to call unverified numbers) with a voice-capable number as caller ID; check Twilio\'s Geo Permissions for the countries you call',
+                'Account SID and Auth Token from the Twilio Console (a main-account token is required for request-signature validation)',
+                'APP_URL must be a public HTTPS URL: Twilio fetches TwiML and posts call status to /webhooks/telephony/… (no manual webhook setup — URLs are sent per call)',
+                'Each salesperson needs their own phone number on their profile; the provider rings them first and then bridges the customer',
+                'Call recording is off by default; enabling it is your responsibility under local consent laws, and recordings stay on Twilio (only the link is stored)'];
         } else {
             $out['requirements'] = $provider === 'openai'
                 ? ['API key from platform.openai.com (project key recommended)', 'Use "Load models" on the AI Assistant page to pick a chat model', 'Embeddings (semantic search) use text-embedding-3-small by default']

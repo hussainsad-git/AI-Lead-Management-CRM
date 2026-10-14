@@ -34,6 +34,7 @@ class LogCallRequest extends FormRequest
             'next_follow_up_at' => ['nullable', 'date', 'after:now'],
             'callback_at' => ['nullable', 'date', 'after:now'],
             'purpose' => ['nullable', 'string', 'max:191'],
+            'telephony_call_id' => ['nullable', 'integer', Rule::exists('telephony_calls', 'id')->where('organization_id', $org)],
         ];
     }
 }

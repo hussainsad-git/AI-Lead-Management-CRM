@@ -125,3 +125,13 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Fill the hidden `website` field: HTTP 200, nothing stored.
 - [ ] Rotate the key: old URL returns 404 immediately.
 - [ ] A Sales Representative cannot open `GET /api/v1/web-forms` (403).
+
+## Twilio click-to-call (needs a real Twilio account and public HTTPS)
+
+- [ ] Integrations → Twilio Voice: Test connection shows the account name; a wrong token shows "Connection test failed" and status Error.
+- [ ] Salesperson without a profile phone sees the button disabled with "Add your phone number on your profile first".
+- [ ] Click-to-call: your phone rings, the prompt plays, the customer is dialed with the Twilio number as caller ID; the status line moves Ringing → Connected → Call ended.
+- [ ] Timeline shows "Click-to-call started" then "Call ended … (from provider)" with talk time; a notification "Log the outcome of your call" links to the lead and opens the call modal with the measured minutes pre-filled.
+- [ ] Customer busy / no answer → customer leg shows that status; nothing changes the pipeline stage until an outcome is logged.
+- [ ] Opted-out contact (phone): button disabled "Opted out of calls"; API returns 422 `suppressed`.
+- [ ] Tamper a callback (wrong signature) → 403, call unchanged.

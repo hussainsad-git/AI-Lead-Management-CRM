@@ -62,7 +62,7 @@
                 <div class="mb-3 hidden" id="cf-callback-wrap"><label class="form-label" for="cf-callback">Callback at <span class="text-danger">*</span></label><input class="form-control" type="datetime-local" id="cf-callback" name="callback_at"></div>
                 <div class="mb-3"><label class="form-label" for="cf-notes">Notes</label><textarea class="form-control" id="cf-notes" name="notes" rows="3" maxlength="5000"></textarea></div>
                 <div class="row g-2">
-                    <div class="col-5"><label class="form-label" for="cf-duration">Duration (min)</label><input class="form-control" type="number" min="0" step="0.5" id="cf-duration" name="duration_minutes" placeholder="Optional"></div>
+                    <div class="col-5"><label class="form-label" for="cf-duration">Duration (min)</label><input class="form-control" type="number" min="0" step="0.5" id="cf-duration" name="duration_minutes" placeholder="Optional"><input type="hidden" name="telephony_call_id" id="cf-tcall"></div>
                     <div class="col-7"><label class="form-label" for="cf-next">Next follow-up</label><input class="form-control" type="datetime-local" id="cf-next" name="next_follow_up_at"></div>
                     <div class="col-12"><label class="form-label" for="cf-nextaction">Next action</label><input class="form-control" id="cf-nextaction" name="next_action" maxlength="191" placeholder="e.g. Send price list, call after Friday prayers"></div>
                 </div>

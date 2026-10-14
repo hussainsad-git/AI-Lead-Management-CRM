@@ -22,6 +22,9 @@ Route::middleware('perm:leads.view_all|leads.view_team|leads.view_own')->group(f
     Route::post('leads/{lead}/archive', [V1\LeadController::class, 'archive']);
     Route::post('leads/{lead}/follow-ups', [V1\LeadController::class, 'scheduleFollowUp']);
     Route::post('leads/{lead}/calls', [V1\LeadController::class, 'logCall']);
+    Route::post('leads/{lead}/dial', [V1\TelephonyController::class, 'dial'])->middleware('throttle:messaging');
+    Route::get('leads/{lead}/telephony-calls', [V1\TelephonyController::class, 'recent']);
+    Route::get('telephony-calls/{call}', [V1\TelephonyController::class, 'show']);
     Route::post('leads/{lead}/appointments', [V1\LeadController::class, 'createAppointment']);
     Route::get('pipeline', V1\PipelineController::class);
     Route::get('contacts/match', [V1\ContactController::class, 'match']);

@@ -17,6 +17,17 @@ Requirements for production: public HTTPS URL, valid certificate, the endpoint n
 
 Form endpoints (`Integrations → Website & landing-page forms`) accept POSTs from your own site with an origin allow-list, honeypot and per-IP throttle, and create leads with UTM/fbclid attribution and consent records. Zapier/Make connect through the REST API with a personal bearer token (inbound) and the automation `call_webhook` action (outbound, HMAC-signed). Field names, payloads and verification snippets: `RECIPES.md`.
 
+## Twilio Voice (click-to-call) — built
+
+What it does: a **Click-to-call** button on lead pages. Twilio rings the salesperson's own phone first (no softphone, no browser audio), then bridges the customer with your Twilio number as caller ID. Ring/answer/end status, agent-leg duration and customer-leg talk time come from Twilio's callbacks and are shown on the timeline as *from provider*; the salesperson still logs the outcome (answered, callback, not interested …), which pre-fills the measured talk time. Nothing is recorded unless you turn recording on.
+
+1. Twilio Console → Account Info: **Account SID** and **Auth Token** (main account; sub-account tokens are fine too, but the token must be the one that signs callbacks). Buy or verify a voice-capable number to use as caller ID. Trial accounts can only call verified numbers; upgrade for real use. Check *Voice → Geo Permissions* for every country you call (Pakistan is off by default).
+2. LeadFlow → Integrations → Twilio Voice: Account SID, auth token, caller ID number (E.164). Optional: prompt played to the salesperson, `record_calls = 1`. Save, then **Test connection** (GET `/Accounts/{sid}.json`; status must be `active`).
+3. `APP_URL` must be a public HTTPS URL — Twilio fetches TwiML from `/webhooks/telephony/{key}/twiml/{call}` and posts status to `/status/{call}`, `/dial-status/{call}`, `/recording/{call}`. URLs are passed with each call; nothing to configure in the Twilio console. Every callback is verified with `X-Twilio-Signature` (HMAC-SHA1 over the exact URL + sorted POST params) — behind a proxy/CDN, make sure Laravel sees the original scheme/host (trusted proxies), otherwise signatures fail with 403.
+4. Each salesperson adds their phone number on **Profile**; without it the button shows disabled with the reason.
+
+Limits: outbound only (no inbound routing/IVR); one open call per salesperson; recordings stay on Twilio, only the link is stored; costs are not pulled (price fields are reserved). Not verified in the delivery sandbox: live calls (no outbound network) — the integration is covered by `TelephonyTest` with Twilio's documented request/response shapes and signed callbacks.
+
 ## OpenAI — built
 
 API key (a project key is recommended). Use **AI Assistant → Load models** to pick a chat model your account has. Embeddings (`text-embedding-3-small`) are used automatically for the knowledge base; after first connecting OpenAI, use *Re-process* on existing documents to add vectors.
