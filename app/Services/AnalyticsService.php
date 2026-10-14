@@ -130,22 +130,21 @@ class AnalyticsService
     {
         $names = LeadSource::pluck('name', 'id');
 
-        return $this->group($this->leads($r, $f)->get(), 'lead_source_id')
-            ->map(fn ($g, $id) => ['source' => $names[$id] ?? 'Unspecified'] + $this->funnel($g))->sortByDesc('leads')->values()->all();
+        return $this->funnelBy($this->leads($r, $f), 'leads.lead_source_id')
+            ->map(fn ($fn, $id) => ['source' => $names[$id] ?? 'Unspecified'] + $fn)->sortByDesc('leads')->values()->all();
     }
 
     public function campaigns(DateRange $r, array $f): array
     {
-        $leads = $this->leads($r, $f)->with('firstTouch:id,lead_id,campaign_id')->get();
         $cur = $this->org->require()->currency;
         [$from, $to] = $r->localDates();
         $spend = CampaignSpend::effective()->where('currency', $cur)->when($from, fn ($q) => $q->whereBetween('spend_date', [$from, $to]))
             ->selectRaw('campaign_id, SUM(amount) as s')->groupBy('campaign_id')->pluck('s', 'campaign_id');
         $names = Campaign::pluck('name', 'id');
+        $q = $this->leads($r, $f)->leftJoin('lead_attributions as ft', fn ($j) => $j->on('ft.lead_id', '=', 'leads.id')->where('ft.touch', 'first'));
 
-        return $leads->groupBy(fn ($l) => $l->firstTouch?->campaign_id ?? 0)
-            ->map(function ($g, $cid) use ($spend, $names, $cur) {
-                $fn = $this->funnel($g);
+        return $this->funnelBy($q, DB::raw('COALESCE(ft.campaign_id, 0)'), 'campaign_key')
+            ->map(function ($fn, $cid) use ($spend, $names, $cur) {
                 $s = $cid && isset($spend[$cid]) ? round((float) $spend[$cid], 2) : null;
 
                 return ['campaign' => $cid ? ($names[$cid] ?? '#'.$cid) : 'No campaign attribution', 'campaign_id' => $cid ?: null, 'currency' => $cur, 'spend' => $s,
@@ -157,17 +156,56 @@ class AnalyticsService
 
     public function salespeople(DateRange $r, array $f): array
     {
-        $leads = $this->leads($r, $f)->whereNotNull('assigned_user_id')->get();
+        $byUser = $this->funnelBy($this->leads($r, $f)->whereNotNull('leads.assigned_user_id'), 'leads.assigned_user_id');
         $calls = $this->in(CallTask::query()->where('status', 'completed'), 'completed_at', $r)->selectRaw('completed_by, COUNT(*) as c')->groupBy('completed_by')->pluck('c', 'completed_by');
         $msgs = $this->in(Message::query()->where('sender_type', 'user'), 'occurred_at', $r)->selectRaw('user_id, COUNT(*) as c')->groupBy('user_id')->pluck('c', 'user_id');
         $overdue = CallTask::where('status', 'pending')->where('scheduled_at', '<', now())->selectRaw('assigned_user_id, COUNT(*) as c')->groupBy('assigned_user_id')->pluck('c', 'assigned_user_id');
-        $ids = $leads->pluck('assigned_user_id')->merge($calls->keys())->merge($msgs->keys())->filter()->unique();
+        $ids = $byUser->keys()->merge($calls->keys())->merge($msgs->keys())->filter()->unique();
         $names = User::query()->inCurrentOrganization()->whereIn('id', $ids)->pluck('name', 'id');
-        $byUser = $leads->groupBy('assigned_user_id');
 
         return $names->map(fn ($n, $id) => ['user_id' => $id, 'name' => $n, 'calls_logged' => (int) ($calls[$id] ?? 0),
-            'whatsapp_sent' => (int) ($msgs[$id] ?? 0), 'overdue_follow_ups' => (int) ($overdue[$id] ?? 0)] + $this->funnel($byUser[$id] ?? collect()))
+            'whatsapp_sent' => (int) ($msgs[$id] ?? 0), 'overdue_follow_ups' => (int) ($overdue[$id] ?? 0)] + ($byUser[$id] ?? $this->emptyFunnel()))
             ->sortByDesc('leads')->values()->all();
+    }
+
+    /**
+     * Funnel aggregates in one GROUP BY instead of loading every lead: counts, rates, average hours to first
+     * contact and average attempts, keyed by the group column. Revenue is null (not 0) when no won deal has a value.
+     */
+    private function funnelBy(Builder $q, string|\Illuminate\Database\Query\Expression $group, string $alias = 'grp'): Collection
+    {
+        $hours = DB::getDriverName() === 'sqlite'
+            ? "AVG(CASE WHEN leads.first_contacted_at IS NOT NULL THEN (julianday(leads.first_contacted_at) - julianday(leads.created_at)) * 24 END)"
+            : 'AVG(CASE WHEN leads.first_contacted_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, leads.created_at, leads.first_contacted_at) / 60 END)';
+        $rows = $q->selectRaw(($group instanceof \Illuminate\Database\Query\Expression ? $group->getValue(DB::getQueryGrammar()) : $group)." as $alias, COUNT(*) as n,
+                SUM(CASE WHEN leads.first_contacted_at IS NOT NULL THEN 1 ELSE 0 END) as contacted,
+                SUM(CASE WHEN leads.first_responded_at IS NOT NULL THEN 1 ELSE 0 END) as responded,
+                SUM(CASE WHEN leads.qualified_at IS NOT NULL THEN 1 ELSE 0 END) as qualified,
+                SUM(CASE WHEN leads.converted_at IS NOT NULL THEN 1 ELSE 0 END) as converted,
+                SUM(CASE WHEN leads.closed_at IS NOT NULL AND leads.converted_at IS NULL THEN 1 ELSE 0 END) as lost,
+                SUM(CASE WHEN leads.converted_at IS NOT NULL AND leads.deal_value IS NOT NULL THEN 1 ELSE 0 END) as valued,
+                SUM(CASE WHEN leads.converted_at IS NOT NULL THEN COALESCE(leads.deal_value, 0) ELSE 0 END) as revenue,
+                $hours as avg_hours, AVG(leads.contact_attempts) as avg_attempts")
+            ->groupBy(DB::raw($group instanceof \Illuminate\Database\Query\Expression ? $group->getValue(DB::getQueryGrammar()) : $group))->get();
+
+        return $rows->mapWithKeys(function ($x) use ($alias) {
+            $n = (int) $x->n;
+            $pct = fn ($a) => $n ? round($a / $n * 100, 1) : null;
+
+            return [(int) $x->{$alias} => [
+                'leads' => $n, 'contacted' => (int) $x->contacted, 'responded' => (int) $x->responded, 'qualified' => (int) $x->qualified,
+                'converted' => (int) $x->converted, 'lost' => (int) $x->lost, 'revenue' => (int) $x->valued ? round((float) $x->revenue, 2) : null,
+                'response_rate' => $pct((int) $x->responded), 'qualified_rate' => $pct((int) $x->qualified), 'conversion_rate' => $pct((int) $x->converted),
+                'avg_first_contact_h' => $x->avg_hours !== null ? round((float) $x->avg_hours, 1) : null,
+                'avg_attempts' => $n ? round((float) $x->avg_attempts, 1) : null,
+            ]];
+        });
+    }
+
+    private function emptyFunnel(): array
+    {
+        return ['leads' => 0, 'contacted' => 0, 'responded' => 0, 'qualified' => 0, 'converted' => 0, 'lost' => 0, 'revenue' => null,
+            'response_rate' => null, 'qualified_rate' => null, 'conversion_rate' => null, 'avg_first_contact_h' => null, 'avg_attempts' => null];
     }
 
     public function scores(): array
@@ -175,27 +213,4 @@ class AnalyticsService
         return Lead::whereNull('archived_at')->whereNotNull('score_label')->selectRaw('score_label, COUNT(*) as c')->groupBy('score_label')->pluck('c', 'score_label')->all();
     }
 
-    private function group(Collection $leads, string $key): Collection
-    {
-        return $leads->groupBy(fn ($l) => $l->{$key} ?? 0);
-    }
-
-    private function funnel(Collection $g): array
-    {
-        $n = $g->count();
-        $contacted = $g->whereNotNull('first_contacted_at')->count();
-        $hours = $g->whereNotNull('first_contacted_at')->map(fn ($l) => $l->created_at->diffInMinutes($l->first_contacted_at, true) / 60);
-        $pct = fn ($a) => $n ? round($a / $n * 100, 1) : null;
-
-        return [
-            'leads' => $n, 'contacted' => $contacted, 'responded' => $g->whereNotNull('first_responded_at')->count(),
-            'qualified' => $q = $g->whereNotNull('qualified_at')->count(), 'converted' => $c = $g->whereNotNull('converted_at')->count(),
-            'lost' => $g->filter(fn ($l) => $l->closed_at && ! $l->converted_at)->count(),
-            // null (not 0) when no won deal has a value entered
-            'revenue' => $g->whereNotNull('converted_at')->whereNotNull('deal_value')->isEmpty() ? null : round((float) $g->whereNotNull('converted_at')->sum('deal_value'), 2),
-            'response_rate' => $pct($g->whereNotNull('first_responded_at')->count()), 'qualified_rate' => $pct($q), 'conversion_rate' => $pct($c),
-            'avg_first_contact_h' => $hours->count() ? round($hours->avg(), 1) : null,
-            'avg_attempts' => $n ? round($g->avg('contact_attempts'), 1) : null,
-        ];
-    }
 }

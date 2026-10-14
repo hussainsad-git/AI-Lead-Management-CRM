@@ -100,6 +100,9 @@ php artisan leadflow:doctor          # confirm services
 ```
 Do a restore drill into a scratch database before go-live and after major upgrades. The `docs/DEPLOYMENT.md` go-live checklist includes it.
 
+## Acceptance & performance
+See `docs/ACCEPTANCE.md` for the criterion-by-criterion verification record and the 25k-lead performance baseline (`php artisan db:seed --class=LoadTestSeeder` on a non-production database).
+
 ## Production readiness
 
 `php artisan leadflow:doctor` (also shown on Platform Admin) checks environment, debug, keys, HTTPS, cookies, DB, migrations, queue worker and scheduler heartbeats, failed jobs, mail, cache, writable paths, PHP extensions, last error and latest backup. It exits non-zero on any FAIL so it can gate deployments. See `docs/DEPLOYMENT.md` (web server configs, go-live checklist) and `docs/SECURITY.md` (controls and review notes).
