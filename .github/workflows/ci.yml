@@ -53,6 +53,30 @@ jobs:
       - name: Translations in sync with generated JS
         run: php artisan i18n:build --check
 
+  redis:
+    name: Tests on Redis drivers
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_sqlite, redis, gd, zip, bcmath
+          coverage: none
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate --force
+      - name: Suite with sessions, cache and locks on Redis
+        env:
+          SESSION_DRIVER: redis
+          CACHE_STORE: redis
+          REDIS_HOST: 127.0.0.1
+        run: php artisan test --compact
+
   audit:
     name: Dependency advisories
     runs-on: ubuntu-latest

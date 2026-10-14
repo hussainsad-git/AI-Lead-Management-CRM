@@ -2,7 +2,7 @@
 
 Lead management for businesses that run Facebook/Instagram ads with WhatsApp as the main channel: one place for leads from ads, WhatsApp, forms, walk-ins and spreadsheets; a sales pipeline; calls, callbacks and appointments; honest campaign cost metrics; and auditable, permissioned access.
 
-**Status:** Core CRM, WhatsApp Cloud API inbox, AI assistant (OpenAI / DeepSeek) with knowledge base, auto-replies, lead qualification & scoring, analytics, multi-business admin and Urdu/Arabic (RTL) UI are implemented and tested (62 automated tests). Meta Marketing API spend sync, Lead Ads, audience segments and email notifications are still planned and shown as such — nothing is simulated. See `docs/ARCHITECTURE.md` and `docs/AI_WHATSAPP.md`.
+**Status:** v1.3 — all 28 sections of the brief are implemented and tested (94 automated tests, 2,376 assertions): core CRM, pipeline, calls/follow-ups, imports/exports, WhatsApp Cloud API inbox, AI assistant (OpenAI / DeepSeek) with knowledge base and auto-replies, Meta Marketing API spend sync, Lead Ads webhooks, dynamic audience segments with hashed Custom Audience uploads, automation rules, lead scoring, notifications (in-app + email), 2FA, API tokens, retention/erasure, multi-business admin and Urdu/Arabic (RTL) UI. External integrations show real connection state — nothing is simulated. See `docs/ARCHITECTURE.md`, `docs/ACCEPTANCE.md`.
 
 **Suited to:** agencies, lead-generation and real-estate businesses, educational institutes, clinics, eCommerce stores, support teams and service businesses — industry presets configure the assistant for each.
 

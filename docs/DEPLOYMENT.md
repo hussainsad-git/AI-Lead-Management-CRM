@@ -68,6 +68,8 @@ autorestart=true
 stopwaitsecs=3600
 stdout_logfile=/var/www/leadflow/storage/logs/worker.log
 ```
+For more than ~4 workers or more than one web node, move sessions/cache/queue to Redis — see `REDIS.md` (drivers only; no code change).
+
 Scheduled work: scheduler heartbeat (every minute), worker heartbeat (5 min), `automation:scan` (5 min), `meta:sync` (hourly), `followups:mark-missed` (hourly), `leads:rescore` (hourly), `leadflow:backup` (01:30), `leadflow:retention` (02:30), `audiences:sync` (03:10), queue pruning (daily).
 
 ## 6. Deploy / upgrade

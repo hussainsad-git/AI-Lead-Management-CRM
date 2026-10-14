@@ -2,15 +2,16 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('followups:mark-missed')->hourly()->withoutOverlapping();
-Schedule::command('queue:prune-failed --hours=720')->daily();
-Schedule::command('model:prune')->daily();
-Schedule::command('leads:rescore')->hourlyAt(15)->withoutOverlapping();
-Schedule::command('queue:prune-batches')->daily();
-Schedule::command('automation:scan')->everyFiveMinutes()->withoutOverlapping();
-Schedule::command('meta:sync')->hourly()->withoutOverlapping();
-Schedule::command('audiences:sync')->dailyAt('03:10')->withoutOverlapping();
-Schedule::command('leadflow:retention')->dailyAt('02:30')->withoutOverlapping();
+// onOneServer(): with several web nodes each running cron, only one executes each entry (needs a shared cache: database or redis).
+Schedule::command('followups:mark-missed')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('queue:prune-failed --hours=720')->daily()->onOneServer();
+Schedule::command('model:prune')->daily()->onOneServer();
+Schedule::command('leads:rescore')->hourlyAt(15)->withoutOverlapping()->onOneServer();
+Schedule::command('queue:prune-batches')->daily()->onOneServer();
+Schedule::command('automation:scan')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('meta:sync')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('audiences:sync')->dailyAt('03:10')->withoutOverlapping()->onOneServer();
+Schedule::command('leadflow:retention')->dailyAt('02:30')->withoutOverlapping()->onOneServer();
 Schedule::call(fn () => \App\Support\Ops\Heartbeat::beat('scheduler'))->everyMinute()->name('heartbeat');
-Schedule::job(new \App\Jobs\WorkerHeartbeat)->everyFiveMinutes()->name('worker-heartbeat');
-Schedule::command('leadflow:backup')->dailyAt('01:30')->withoutOverlapping();
+Schedule::job(new \App\Jobs\WorkerHeartbeat)->everyFiveMinutes()->name('worker-heartbeat')->onOneServer();
+Schedule::command('leadflow:backup')->dailyAt('01:30')->withoutOverlapping()->onOneServer();

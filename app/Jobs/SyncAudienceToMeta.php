@@ -17,6 +17,8 @@ class SyncAudienceToMeta implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 1800;
 
+    public int $uniqueFor = 1900; // lock expires even if the worker is SIGKILLed mid-run (must exceed $timeout)
+
     public function __construct(public int $jobId, public int $organizationId) {}
 
     public function uniqueId(): string

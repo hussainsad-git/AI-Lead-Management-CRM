@@ -76,6 +76,34 @@ class Doctor extends Command
         $mail = config('mail.default');
         $add('mail', 'Mail transport', in_array($mail, ['log', 'array'], true) ? 'warn' : 'ok', $mail.(in_array($mail, ['log', 'array'], true) ? ' — email notifications disabled' : ''));
         $add('cache', 'Cache driver', config('cache.default') === 'array' ? 'warn' : 'ok', config('cache.default'));
+        $usesRedis = array_filter(['session' => config('session.driver'), 'cache' => config('cache.default'), 'queue' => config('queue.default')], fn ($d) => $d === 'redis');
+        if ($usesRedis) {
+            try {
+                $conns = array_unique(array_filter([config('database.redis.default') ? 'default' : null, config('cache.default') === 'redis' ? config('cache.stores.redis.connection', 'cache') : null]));
+                $info = [];
+                foreach ($conns as $c) {
+                    $r = \Illuminate\Support\Facades\Redis::connection($c);
+                    $r->ping();
+                    $server = $r->info('server');
+                    $server = $server['Server'] ?? $server; // phpredis nests by section, predis does not
+                    $ver = $server['redis_version'] ?? $server['valkey_version'] ?? '?';
+                    $policy = null;
+                    try {
+                        $pol = $r->config('GET', 'maxmemory-policy');
+                        $policy = is_array($pol) ? ($pol['maxmemory-policy'] ?? array_values($pol)[1] ?? null) : null;
+                    } catch (\Throwable) {
+                        // CONFIG is often disabled on managed Redis; not an error
+                    }
+                    $info[] = "$c: v$ver".($policy ? " maxmemory-policy=$policy" : '');
+                    if ($c === 'default' && config('queue.default') === 'redis' && $policy && str_starts_with($policy, 'allkeys-')) {
+                        $add('redis_eviction', 'Redis eviction policy', 'fail', "$policy on the queue connection can evict queued jobs and unique-job locks — the policy is per instance, so set noeviction (or volatile-*) or run queues on a separate Redis instance");
+                    }
+                }
+                $add('redis', 'Redis', 'ok', implode('; ', $info).' — used for '.implode(', ', array_keys($usesRedis)));
+            } catch (\Throwable $e) {
+                $add('redis', 'Redis', 'fail', 'unreachable: '.$e->getMessage());
+            }
+        }
         foreach (['storage/app/private', 'storage/logs', 'storage/framework/cache/data', 'storage/framework/sessions', 'storage/framework/views', 'bootstrap/cache'] as $dir) {
             $p = base_path($dir);
             $add('w_'.md5($dir), "Writable: $dir", is_dir($p) && is_writable($p) ? 'ok' : 'fail', is_dir($p) ? (is_writable($p) ? 'yes' : 'not writable by the PHP user') : 'missing');

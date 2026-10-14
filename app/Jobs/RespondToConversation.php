@@ -18,6 +18,8 @@ class RespondToConversation implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 120;
 
+    public int $uniqueFor = 180; // lock expires even if the worker dies mid-run (must exceed $timeout)
+
     public function __construct(public int $conversationId, public int $messageId, public int $organizationId) {}
 
     public function uniqueId(): string

@@ -43,3 +43,7 @@ Unzipped the release into an empty directory, `composer install` (vendor from th
 ## Accessibility sweep (v1.3, 2026-10-14)
 
 Scripted audit over 21 authenticated pages (admin) at 1366×900: 0 unlabeled buttons, 0 images without `alt`, 0 unlabeled form controls after adding `aria-label` to the Integrations token/URL fields; keyboard tab order on Leads follows the layout with a visible focus outline. Contrast: 49 WCAG AA failures found (muted text 4.40:1, `prio-low` 2.56:1, sidebar footer 3.96:1, calendar other-month days 2.45:1, WhatsApp empty state 3.97:1) and fixed by darkening `--lf-text-muted` to `#596a81` and adjusting the specific tokens; re-run reports 0 real failures (one remaining hit is a false positive from a 3 %-alpha card footer). The audit is heuristic (computed styles, no screen-reader run); a manual AT pass is listed in `QA_CHECKLIST.md`.
+
+## Redis drivers (v1.3, 2026-10-14)
+
+Suite and live smoke executed against Redis 7.0.15 with sessions, cache, queue and locks on Redis; details and the two defects it exposed (missing `uniqueFor` on unique jobs; per-process assumptions in the test harness) are in `docs/REDIS.md`. Scheduled commands now carry `onOneServer()`. CI gained a Redis leg.

@@ -14,6 +14,19 @@ abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Shared stores (Redis) keep rate-limiter and heartbeat state between tests; the default array store resets itself.
+        // Unique-job locks live on the lock connection (a different Redis DB than the cache), so flush that too.
+        if (config('cache.default') === 'redis') {
+            \Illuminate\Support\Facades\Cache::flush();
+            \Illuminate\Support\Facades\Redis::connection(config('cache.stores.redis.lock_connection', 'default'))->flushdb();
+        } elseif (config('cache.default') !== 'array') {
+            \Illuminate\Support\Facades\Cache::flush();
+        }
+    }
+
     protected function makeOrg(string $name = 'Acme Realty'): Organization
     {
         return app(OrganizationProvisioner::class)->create($name);
