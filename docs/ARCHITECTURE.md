@@ -25,6 +25,7 @@ AI layer: KnowledgeBase (hybrid BM25 + embeddings) → AiResponder (grounded JSO
 (auto-replies, suggest/auto modes, human handoff) → LeadQualifier + LeadScoring. See docs/AI_WHATSAPP.md.
 Automation: domain services call AutomationEngine::fire(trigger, lead, eventId) after commit → RunAutomation job → ConditionEvaluator → actions;
 timed triggers (uncontacted / overdue / inactive) and Reminders run from `automation:scan` every 5 minutes. See docs/AUTOMATION.md.
+Audiences: SegmentQuery (definition → SQL) → AudienceService (eligibility, membership snapshot) → CSV export / MetaAudienceSync (hashed replace upload). See docs/AUDIENCES.md.
 ```
 
 ### Decisions taken up front
@@ -73,7 +74,7 @@ ai_interactions (every AI call: tokens, latency, outcome, feedback) · notificat
 leads: + score, score_label, score_factors (JSON), ai_summary, language
 automation_rules 1─* automation_executions (unique (rule, dedupe_key) = exactly-once per event) · users.notification_prefs
 lead_forms 1─* lead_form_submissions (unique (org, external_lead_id); outcome per leadgen id) ; campaigns.ad_account_id, ad_sets/ads.status
-Later: audience_segments, audience_segment_memberships, audience_sync_jobs
+audience_segments 1─* audience_segment_memberships (snapshot: eligible + reason, removed_at) ; audience_segments 1─* audience_sync_jobs (csv_export | meta_replace)
 ```
 
 Deviations from the suggested table list, with reasons:
@@ -100,8 +101,8 @@ Conventions: UTC timestamps; display in organization/user time zone. Money is `D
 | 6 | Calls & Follow-ups | 2 | followups.manage_own/all |
 | 7 | Calendar & Appointments | 2 | followups.manage_own/all |
 | 8 | Campaigns (+ manual spend) | 2 (API sync 4) | campaigns.view |
-| 9 | Audience Segments | 5 | audiences.manage |
-| 10 | Retargeting | 5 | audiences.manage |
+| 9 | Audience Segments (builder, eligibility, preview, CSV) | ✓ | audiences.manage |
+| 10 | Retargeting (Meta Custom Audiences, sync history) | ✓ | audiences.manage |
 | 11 | Analytics & Reports | ✓ | reports.view |
 | 12 | Team & Assignments | 2 | users.manage |
 | 13 | Import / Export | 2 | imports.run / leads.export |
@@ -119,7 +120,7 @@ Modules from later phases appear in navigation with an explicit "planned for Pha
 - [x] **AI & WhatsApp release:** WhatsApp Cloud API (signed, idempotent webhooks; inbox; templates; 24h window; delivery statuses), OpenAI + DeepSeek assistant with knowledge base, instant auto-replies, suggest/auto modes with handoff, human-approved learning, lead qualification, transparent scoring, round-robin assignment, in-app notifications, analytics & reports, platform admin (multi-business), Urdu/Arabic UI with RTL, profile and business settings. 62 automated tests.
 - [x] **Phase 3 — Automation:** rule engine (trigger → conditions → actions; exactly-once per event, loop guard, dry-run tester, execution history), five starter rules per business (first-contact assignment off by default; SLA, escalation, qualified alert, 3-unanswered-calls on), built-in callback/appointment reminders, email notifications with per-user preferences (sent only when a real mailer is configured), round-robin, scoring, missed follow-ups.
 - [x] **Phase 4 — Integrations:** WhatsApp Cloud API, OpenAI, DeepSeek, Meta Marketing API (campaign structure, daily spend with API-over-manual precedence, aggregate events) and Lead Ads (signed `leadgen` webhook + hourly backfill; exactly-once per leadgen id; no fabricated contacts). 76 automated tests.
-- [~] **Phase 5 — Marketing intelligence:** done: analytics & reports with CSV export. Remaining: audience segments, Custom Audience sync.
+- [x] **Phase 5 — Marketing intelligence:** analytics & reports with CSV export; dynamic audience segments with two-level AND/OR, always-on opt-out exclusion, consent policies, exclusion lists, membership snapshots on the lead timeline, audited CSV / hashed exports, Meta Custom Audience creation and full-replace hashed uploads with live Meta size/delivery status. 82 automated tests. See docs/AUDIENCES.md.
 - [ ] **Phase 6 — Production readiness:** security review, load/perf indexes review, error monitoring, backup drills, API tokens for external clients.
 
 ## 6. ER diagram (Phases 1–2)

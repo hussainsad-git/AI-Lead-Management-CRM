@@ -27,3 +27,11 @@
 - Meta's insights for the last 3 days are re-fetched every hour because Meta restates attribution; "Reload 30 days" exists for larger corrections.
 - A Lead Ads submission whose phone is invalid for the organization's default country and that has no email is kept as a failed submission with the raw phone in the error, not as a contact.
 - Lead `created_at` for Instant Form leads is the Meta submission time, so SLA timers and cohort reports reflect when the person actually enquired.
+
+## Phase 5 — audiences
+- Default consent policy is "not opted out" rather than "explicit consent recorded": most businesses have not captured per-channel ads consent yet, and Meta's customer-list terms put the responsibility for having the right to use the data on the advertiser. The strict policy is one click away per segment.
+- Uploads carry hashed phone, email and country only. Names/city would raise match rates but are not necessary; "minimum necessary data" wins.
+- Every Meta sync is a full replace (usersreplace session), not incremental add/remove, so the audience can never retain someone who has since opted out.
+- Exclusion lists are CRM-side only. To exclude people inside Meta, upload them as an audience and exclude that audience in the ad set.
+- Deleting a segment leaves its Meta audience in Ads Manager; remote assets are never deleted silently.
+- Audience sizes shown are Meta's own approximate bounds; the CRM shows "eligible" counts, never a predicted match count.

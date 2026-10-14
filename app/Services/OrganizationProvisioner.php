@@ -69,6 +69,7 @@ class OrganizationProvisioner
             }
 
             app(\App\Services\Automation\DefaultRules::class)->seed();
+            app(\App\Services\Audiences\DefaultSegments::class)->seed();
         });
     }
 }

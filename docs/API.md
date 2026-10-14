@@ -107,5 +107,8 @@ Timestamps are ISO-8601 UTC (`2026-10-12T06:00:00Z`). Datetime inputs may be ISO
 | GET/PATCH `profile`, POST `profile/password` | any | password change signs out other sessions |
 | PATCH `settings/business`, POST `settings/logo` | settings.manage | industry, colour, locale, hours, auto-assign, scoring weights |
 | GET `platform`, POST `platform/organizations`, PATCH `platform/organizations/{id}` | platform admin | counts only, no customer records |
+| GET `audiences/meta`, GET/POST `audiences`, GET/PATCH/DELETE `audiences/{id}`, POST `audiences/estimate`, POST `audiences/{id}/refresh` | audiences.manage | segment builder; counts = members vs eligible with per-reason skips; previews masked |
+| GET `audiences/{id}/export?hashed=0\|1` | audiences.manage + leads.export | audited; hashed variant = SHA-256 phone/email/country only |
+| POST `audiences/{id}/sync` (202), GET `audiences/jobs`, GET `audiences/meta-status` | audiences.manage | Meta Custom Audience create + replace upload (queued); live Meta size/delivery |
 | GET/POST `/webhooks/whatsapp/{key}` | public, signature-verified | Meta verification + events |
 | GET/POST `/webhooks/meta/{key}` | public, signature-verified | Page `leadgen` webhook (Lead Ads) |

@@ -36,4 +36,6 @@ API key from platform.deepseek.com. Default model `deepseek-v4-flash`. No embedd
 
 **Endpoints used.** `GET /me`, `GET /act_{id}`, `GET /act_{id}/campaigns|adsets|ads`, `GET /act_{id}/insights?level=campaign&time_increment=1`, `GET /{page_id}/leadgen_forms`, `GET /{form_id}/leads?filtering=[time_created ≥ …]`, `GET /{leadgen_id}`, `POST /{page_id}/subscribed_apps`. Errors are classified (190 expired token, 10/2xx permission, 4/17/32/613/8000x rate limit); auth errors mark the integration *Error* and notify admins once per hour; transient errors are retried by the queue with backoff.
 
+**Custom Audiences.** Needs `ads_management` on the same token and the Custom Audience terms accepted for the ad account (Ads Manager → Audiences). See docs/AUDIENCES.md for what is uploaded (hashed identifiers only) and how.
+
 **Honesty rules.** Nothing is marked connected without a successful authenticated call. Spend shows its currency, range and last sync time. Attribution snapshots keep names as they were when the lead arrived. Anonymous clicks and conversation starts stay aggregate (`campaign_events`), separate from identified contacts.

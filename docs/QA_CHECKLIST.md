@@ -79,3 +79,15 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Lead Ads Testing Tool → a test lead appears within seconds with source *Meta Instant Forms*, full campaign/ad set/ad attribution, form name in notes; re-sending the same test lead creates nothing new.
 - [ ] Stop the queue worker, submit a form, restart → the hourly backfill (or "Reload 30 days") creates the lead exactly once.
 - [ ] Submit a form with no phone/email → no contact is created; the card counts it under "without contact details".
+
+## Audiences & retargeting
+- [ ] Audience Segments lists the 11 suggested audiences and the Do Not Contact exclusion list; Recount fills members/eligible.
+- [ ] Build a segment with two groups joined by OR; Estimate shows members vs eligible with the reasons for anyone left out; save → it appears with counts.
+- [ ] Mark a lead Do Not Contact → after Recount it is counted under "opted out" and never appears in preview, CSV or Meta upload.
+- [ ] Record a withdrawn ads-audience consent on a contact → left out under "consent"; switch the segment to "Explicit consent" → only contacts with granted consent remain.
+- [ ] Attach an exclusion list (e.g. Converted customers as exclusion) → those people are left out under "on an exclusion list".
+- [ ] Export CSV (needs export permission): opens in Excel, no formulas execute; hashed export has no readable phone/email; both appear in Audit Logs and in sync history.
+- [ ] With Meta connected (ads_management, CA terms accepted): "Create Meta audience & sync" → job goes queued → success on Retargeting; Ads Manager shows the audience; after Meta matching, size range and delivery status appear on Retargeting.
+- [ ] Opt someone out, sync again → Meta audience is replaced without them (check `uploaded` dropped by one).
+- [ ] Token without ads_management or terms not accepted → job fails with Meta's reason; nothing marked synced; admin notified.
+- [ ] Lead timeline shows "Added to audience" / "Left audience" events after recounts.

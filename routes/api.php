@@ -149,3 +149,17 @@ Route::patch('automation/rules/{rule}', [V1\AutomationController::class, 'update
 Route::delete('automation/rules/{rule}', [V1\AutomationController::class, 'destroy']);
 Route::post('automation/rules/{rule}/test', [V1\AutomationController::class, 'test']);
 Route::get('automation/executions', [V1\AutomationController::class, 'executions']);
+
+// ----- audience segments & retargeting -----
+Route::get('audiences/meta', [V1\AudienceController::class, 'meta']);
+Route::get('audiences/jobs', [V1\AudienceController::class, 'jobs']);
+Route::get('audiences/meta-status', [V1\AudienceController::class, 'metaStatus']);
+Route::post('audiences/estimate', [V1\AudienceController::class, 'estimate']);
+Route::get('audiences', [V1\AudienceController::class, 'index']);
+Route::post('audiences', [V1\AudienceController::class, 'store']);
+Route::get('audiences/{segment}', [V1\AudienceController::class, 'show']);
+Route::patch('audiences/{segment}', [V1\AudienceController::class, 'update']);
+Route::delete('audiences/{segment}', [V1\AudienceController::class, 'destroy']);
+Route::post('audiences/{segment}/refresh', [V1\AudienceController::class, 'refresh']);
+Route::get('audiences/{segment}/export', [V1\AudienceController::class, 'export'])->middleware('throttle:sensitive');
+Route::post('audiences/{segment}/sync', [V1\AudienceController::class, 'sync'])->middleware('throttle:sensitive');

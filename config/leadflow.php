@@ -35,7 +35,7 @@ return [
         'integrations.manage' => ['admin', 'Configure integrations'],
         'audit.view' => ['admin', 'View audit logs'],
         'automation.manage' => ['admin', 'Manage automation rules'],
-        'audiences.manage' => ['marketing', 'Manage audience segments and retargeting exports (Phase 5)'],
+        'audiences.manage' => ['marketing', 'Manage audience segments and retargeting exports'],
         'whatsapp.view' => ['whatsapp', 'View WhatsApp conversations (own/team/all per lead visibility)'],
         'whatsapp.send' => ['whatsapp', 'Send WhatsApp messages and use AI suggestions'],
         'ai.manage' => ['ai', 'Configure the AI assistant, prompts, auto-replies and review AI learning'],

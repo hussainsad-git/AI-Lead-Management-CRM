@@ -135,6 +135,39 @@ class MetaAdsClient
         return (bool) $this->request('post', '/'.$page.'/subscribed_apps', ['subscribed_fields' => 'leadgen'], $this->pageToken())->json('success');
     }
 
+    // ---------------- custom audiences (needs ads_management + accepted Custom Audience terms) ----------------
+
+    /** @return string the new audience id */
+    public function createCustomAudience(string $name, ?string $description): string
+    {
+        $r = $this->request('post', '/'.$this->accountId().'/customaudiences', [
+            'name' => mb_substr($name, 0, 191), 'description' => mb_substr((string) $description, 0, 500),
+            'subtype' => 'CUSTOM', 'customer_file_source' => 'USER_PROVIDED_ONLY',
+        ]);
+
+        return (string) ($r->json('id') ?: throw new MetaException('Meta did not return an audience id.'));
+    }
+
+    /** @return array{name:?string, approximate_count_lower_bound:?int, approximate_count_upper_bound:?int, delivery_status:?array, operation_status:?array, time_updated:?string} */
+    public function customAudience(string $id): array
+    {
+        return $this->get('/'.$id, ['fields' => 'name,approximate_count_lower_bound,approximate_count_upper_bound,delivery_status,operation_status,time_updated'])->json();
+    }
+
+    /**
+     * Replaces the audience membership with the batches of one session (documented "usersreplace" flow).
+     * $rows are already SHA-256 hashed, column order = $schema.
+     */
+    public function replaceUsersBatch(string $audienceId, string $sessionId, int $batchSeq, bool $last, int $estimatedTotal, array $schema, array $rows): array
+    {
+        $r = $this->request('post', '/'.$audienceId.'/usersreplace', [
+            'session' => json_encode(['session_id' => (int) $sessionId, 'batch_seq' => $batchSeq, 'last_batch_flag' => $last, 'estimated_num_total' => $estimatedTotal]),
+            'payload' => json_encode(['schema' => $schema, 'data' => $rows]),
+        ]);
+
+        return (array) $r->json();
+    }
+
     // ---------------- transport ----------------
 
     private function all(string $path, array $params, ?string $token = null): array

@@ -70,7 +70,7 @@ The first administrator created by `leadflow:install` is the platform administra
    ```cron
    * * * * * cd /var/www/leadflow && php artisan schedule:run >> /dev/null 2>&1
    ```
-   Jobs: `automation:scan` every 5 min (SLA/overdue/inactivity rules + callback/appointment reminders), `meta:sync` hourly (campaigns, spend, Instant Form backfill), mark missed follow-ups (hourly), rescore open leads (hourly), prune failed jobs (daily).
+   Jobs: `automation:scan` every 5 min (SLA/overdue/inactivity rules + callback/appointment reminders), `meta:sync` hourly (campaigns, spend, Instant Form backfill), `audiences:sync` daily (segment recount + auto-sync uploads), mark missed follow-ups (hourly), rescore open leads (hourly), prune failed jobs (daily).
 6. **Queue worker** — required: WhatsApp webhooks, AI replies, knowledge-base processing and imports all run on it. Without it, messages are stored but never answered, automation rules never fire and notification emails are not sent. Supervisor example:
    ```ini
    [program:leadflow-worker]
