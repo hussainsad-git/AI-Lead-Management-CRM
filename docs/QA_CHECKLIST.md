@@ -107,3 +107,11 @@ Use `php artisan db:seed --class=DemoSeeder` on a non-production copy. Test on d
 - [ ] Settings → Security → Require 2FA: an unenrolled user is sent to their profile and the API returns `two_factor_required`; after enrolling everything works.
 - [ ] Team → shield icon → reset a user's 2FA; they can sign in with password only and are prompted to enrol again.
 - [ ] Automation rule with "Call a webhook" to a Zapier catch hook → the zap receives the lead JSON with `X-LeadFlow-Signature`; a private/http URL is refused when saving.
+
+## Accessibility (keyboard + contrast)
+
+- [ ] Tab through Leads: focus ring visible on every focusable control, order follows the visual layout (sidebar → top bar → filters → table).
+- [ ] Every icon-only button has `aria-label` or `title` (toolbar, row actions, modal close).
+- [ ] Every input has a `<label for>`, `aria-label`, or placeholder (check Integrations' read-only token/URL fields).
+- [ ] Body text and muted text meet WCAG AA (≥ 4.5:1 normal, ≥ 3:1 large): dashboard notes, priority badges, Kanban counts, calendar other-month days, sidebar footer, WhatsApp empty state.
+- [ ] Modals trap focus and return it to the trigger on close; `Esc` closes.
