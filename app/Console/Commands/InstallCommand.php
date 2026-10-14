@@ -19,6 +19,13 @@ class InstallCommand extends Command
 
     public function handle(OrganizationProvisioner $provisioner): int
     {
+        // A release archive may omit empty runtime directories; create them so view/config caching works.
+        foreach (['storage/app/private', 'storage/logs', 'storage/framework/cache/data', 'storage/framework/sessions', 'storage/framework/views', 'storage/framework/testing', 'bootstrap/cache'] as $dir) {
+            if (! is_dir(base_path($dir))) {
+                @mkdir(base_path($dir), 0775, true);
+                $this->line("Created $dir");
+            }
+        }
         $org = $this->option('org') ?: $this->ask('Organization name');
         $name = $this->option('name') ?: $this->ask('Administrator name');
         $email = $this->option('email') ?: $this->ask('Administrator email');

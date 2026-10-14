@@ -76,7 +76,7 @@ class Doctor extends Command
         $mail = config('mail.default');
         $add('mail', 'Mail transport', in_array($mail, ['log', 'array'], true) ? 'warn' : 'ok', $mail.(in_array($mail, ['log', 'array'], true) ? ' — email notifications disabled' : ''));
         $add('cache', 'Cache driver', config('cache.default') === 'array' ? 'warn' : 'ok', config('cache.default'));
-        foreach (['storage/app/private', 'storage/logs', 'storage/framework/cache', 'bootstrap/cache'] as $dir) {
+        foreach (['storage/app/private', 'storage/logs', 'storage/framework/cache/data', 'storage/framework/sessions', 'storage/framework/views', 'bootstrap/cache'] as $dir) {
             $p = base_path($dir);
             $add('w_'.md5($dir), "Writable: $dir", is_dir($p) && is_writable($p) ? 'ok' : 'fail', is_dir($p) ? (is_writable($p) ? 'yes' : 'not writable by the PHP user') : 'missing');
         }
