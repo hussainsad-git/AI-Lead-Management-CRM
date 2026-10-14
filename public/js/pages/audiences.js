@@ -10,7 +10,7 @@
     if (!f) return esc(r.field);
     const op = meta.operators[f.type][r.op] || r.op;
     let v = r.value;
-    if (f.type === 'enum') v = (v || []).map(x => ((f.options || []).find(o => String(o.value) === String(x)) || { label: x }).label).join(', ');
+    if (f.type === 'enum') v = (v || []).map(x => t(((f.options || []).find(o => String(o.value) === String(x)) || { label: x }).label)).join(', ');
     if (f.type === 'bool') v = v ? t('yes') : t('no');
     if (f.type === 'days') v = v + ' ' + t('days');
     return `${esc(t(f.label))} ${esc(t(op))}${['empty', 'not_empty'].includes(r.op) ? '' : ' <b>' + esc(v) + '</b>'}`;
@@ -49,7 +49,7 @@
   function valueInput(f, op, value) {
     if (f.type === 'enum') {
       const vals = (value || []).map(String);
-      return `<select class="form-select form-select-sm r-val" multiple size="3" aria-label="${esc(t('Values'))}">${(f.options || []).map(o => opt(o.value, o.label, vals.includes(String(o.value)))).join('')}</select>`;
+      return `<select class="form-select form-select-sm r-val" multiple size="3" aria-label="${esc(t('Values'))}">${(f.options || []).map(o => opt(o.value, t(o.label), vals.includes(String(o.value)))).join('')}</select>`;
     }
     if (f.type === 'bool') return `<select class="form-select form-select-sm r-val" aria-label="${esc(t('Value'))}">${opt('true', t('yes'), value !== false)}${opt('false', t('no'), value === false)}</select>`;
     if (f.type === 'number' || f.type === 'days') return `<div class="input-group input-group-sm"><input type="number" min="0" step="any" class="form-control r-val" value="${esc(value ?? '')}" aria-label="${esc(t('Value'))}">${f.type === 'days' ? `<span class="input-group-text">${t('days')}</span>` : ''}</div>`;

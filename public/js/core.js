@@ -108,7 +108,8 @@
 
   // ---------- Formatting ----------
   const dtf = {};
-  const fmtr = (key, o) => dtf[key] || (dtf[key] = new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: LF.tz }, o)));
+  const INTL = { ur: 'ur-PK', ar: 'ar', en: 'en-GB' }[(body.dataset.locale || 'en')] || undefined;
+  const fmtr = (key, o) => dtf[key] || (dtf[key] = new Intl.DateTimeFormat(INTL, Object.assign({ timeZone: LF.tz }, o)));
   LF.fmt = {
     date(iso) { return iso ? fmtr('d', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso)) : '—'; },
     dateTime(iso) { return iso ? fmtr('dt', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso)) : '—'; },
@@ -117,7 +118,7 @@
       if (!iso) return '—';
       const diff = (new Date(iso).getTime() - Date.now()) / 1000;
       const abs = Math.abs(diff);
-      const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+      const rtf = new Intl.RelativeTimeFormat(INTL, { numeric: 'auto' });
       if (abs < 60) return rtf.format(Math.round(diff), 'second');
       if (abs < 3600) return rtf.format(Math.round(diff / 60), 'minute');
       if (abs < 86400) return rtf.format(Math.round(diff / 3600), 'hour');
@@ -395,7 +396,7 @@
 
   // ---------- Pagination ----------
   LF.pager = function (meta, onPage) {
-    if (!meta || meta.last_page <= 1) return `<div class="small text-muted">${meta ? LF.fmt.num(meta.total) + ' result' + (meta.total === 1 ? '' : 's') : ''}</div>`;
+    if (!meta || meta.last_page <= 1) return `<div class="small text-muted">${meta ? LF.fmt.num(meta.total) + ' ' + LF.t(meta.total === 1 ? 'result' : 'results') : ''}</div>`;
     const p = meta.page, last = meta.last_page;
     const btn = (n, label, dis, act) => `<li class="page-item ${dis ? 'disabled' : ''} ${act ? 'active' : ''}"><button class="page-link" data-page="${n}" ${dis ? 'disabled' : ''}>${label}</button></li>`;
     let pages = '';

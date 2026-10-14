@@ -19,7 +19,7 @@
     if (!f) return esc(c.field);
     const op = meta.operators[f.type][c.op] || c.op;
     let v = c.value;
-    if (f.type === 'enum') v = (v || []).map(x => ((f.options || []).find(o => String(o.value) === String(x)) || { label: x }).label).join(', ');
+    if (f.type === 'enum') v = (v || []).map(x => t(((f.options || []).find(o => String(o.value) === String(x)) || { label: x }).label)).join(', ');
     if (f.type === 'bool') v = v ? t('yes') : t('no');
     return `${esc(t(f.label))} ${esc(t(op))}${['empty', 'not_empty'].includes(c.op) ? '' : ' <b>' + esc(v) + '</b>'}`;
   }
@@ -83,7 +83,7 @@
     if (!f) return '';
     if (f.type === 'enum') {
       const vals = (value || []).map(String);
-      return `<select class="form-select form-select-sm c-val" multiple size="3" aria-label="${esc(t('Values'))}">${(f.options || []).map(o => opt(o.value, o.label, vals.includes(String(o.value)))).join('')}</select>`;
+      return `<select class="form-select form-select-sm c-val" multiple size="3" aria-label="${esc(t('Values'))}">${(f.options || []).map(o => opt(o.value, t(o.label), vals.includes(String(o.value)))).join('')}</select>`;
     }
     if (f.type === 'bool') return `<select class="form-select form-select-sm c-val" aria-label="${esc(t('Value'))}">${opt('true', t('yes'), value !== false)}${opt('false', t('no'), value === false)}</select>`;
     if (f.type === 'number') return `<input type="number" step="any" class="form-control form-control-sm c-val" value="${esc(value ?? '')}" aria-label="${esc(t('Value'))}">`;

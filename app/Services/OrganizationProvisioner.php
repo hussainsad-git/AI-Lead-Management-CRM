@@ -35,6 +35,8 @@ class OrganizationProvisioner
     public function provision(Organization $org): void
     {
         $this->catalog->sync();
+        $prevLocale = app()->getLocale();
+        app()->setLocale(array_key_exists($org->default_locale ?? '', config('locales')) ? $org->default_locale : 'en'); // seeded names in the business's language
         $this->current->runAs($org, function () {
             $allIds = Permission::pluck('id', 'key');
             foreach (config('leadflow.roles') as $key => [$name, $description, $perms]) {
@@ -71,5 +73,6 @@ class OrganizationProvisioner
             app(\App\Services\Automation\DefaultRules::class)->seed();
             app(\App\Services\Audiences\DefaultSegments::class)->seed();
         });
+        app()->setLocale($prevLocale);
     }
 }

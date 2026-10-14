@@ -1,1 +1,1 @@
-window.LF_I18N = {};
+window.LF_I18N = [];
