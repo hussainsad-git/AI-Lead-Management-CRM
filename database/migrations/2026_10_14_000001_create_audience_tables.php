@@ -44,7 +44,7 @@ return new class extends Migration
             $table->timestamp('last_seen_at');
             $table->timestamp('removed_at')->nullable();
             $table->unique(['audience_segment_id', 'lead_id']);
-            $table->index(['audience_segment_id', 'removed_at', 'eligible']);
+            $table->index(['audience_segment_id', 'removed_at', 'eligible'], 'asm_segment_removed_eligible_index');
         });
 
         Schema::create('audience_sync_jobs', function (Blueprint $table) {
@@ -63,7 +63,7 @@ return new class extends Migration
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();
             $table->timestamps();
-            $table->index(['organization_id', 'audience_segment_id', 'created_at']);
+            $table->index(['organization_id', 'audience_segment_id', 'created_at'], 'asj_org_segment_created_index');
         });
     }
 

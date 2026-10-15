@@ -118,7 +118,7 @@ return new class extends Migration
             $table->string('data_source', 20);
             $table->string('external_event_id', 128)->nullable();
             $table->timestamps();
-            $table->unique(['organization_id', 'data_source', 'external_event_id']);
+            $table->unique(['organization_id', 'data_source', 'external_event_id'], 'campaign_events_org_source_event_unique');
             $table->index(['organization_id', 'event_date', 'event_type']);
         });
 
