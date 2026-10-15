@@ -40,8 +40,8 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
             $table->boolean('eligible')->default(false);      // passes consent + identifier + suppression checks
             $table->string('ineligible_reason', 40)->nullable(); // no_identifier | consent | suppressed | excluded
-            $table->timestamp('first_included_at');
-            $table->timestamp('last_seen_at');
+            $table->timestamp('first_included_at')->useCurrent();
+            $table->timestamp('last_seen_at')->useCurrent();
             $table->timestamp('removed_at')->nullable();
             $table->unique(['audience_segment_id', 'lead_id']);
             $table->index(['audience_segment_id', 'removed_at', 'eligible'], 'asm_segment_removed_eligible_index');

@@ -138,7 +138,7 @@ return new class extends Migration
             $table->timestamp('read_at')->nullable();
             $table->timestamp('failed_at')->nullable();
             $table->json('meta')->nullable();
-            $table->timestamp('occurred_at');
+            $table->timestamp('occurred_at')->useCurrent();
             $table->timestamps();
             $table->unique(['organization_id', 'provider_message_id']);
             $table->index(['conversation_id', 'occurred_at']);

@@ -218,7 +218,7 @@ return new class extends Migration
             $table->json('referral')->nullable();
             $table->string('completeness', 10)->default('partial'); // complete | partial | unknown
             $table->string('captured_via', 30); // manual, import, whatsapp_referral, meta_leadgen, utm
-            $table->timestamp('captured_at');
+            $table->timestamp('captured_at')->useCurrent();
             $table->timestamps();
             $table->unique(['lead_id', 'touch']);
             $table->index(['organization_id', 'campaign_id']);
@@ -274,7 +274,7 @@ return new class extends Migration
             $table->string('visibility', 10)->default('internal'); // internal | customer
             $table->text('body')->nullable();
             $table->json('meta')->nullable();
-            $table->timestamp('occurred_at');
+            $table->timestamp('occurred_at')->useCurrent();
             $table->timestamps();
             $table->index(['lead_id', 'occurred_at']);
             $table->index(['contact_id', 'occurred_at']);
@@ -287,7 +287,7 @@ return new class extends Migration
             $table->foreignId('lead_id')->constrained()->cascadeOnDelete();
             $table->foreignId('assigned_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('scheduled_at');
+            $table->timestamp('scheduled_at')->useCurrent();
             $table->string('priority', 10)->default('normal');
             $table->string('purpose', 191)->nullable();
             $table->unsignedSmallInteger('attempt_number')->default(1);
@@ -313,7 +313,7 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 20)->default('meeting'); // meeting | site_visit | video | call
             $table->string('title', 191);
-            $table->timestamp('starts_at');
+            $table->timestamp('starts_at')->useCurrent();
             $table->timestamp('ends_at')->nullable();
             $table->string('location', 191)->nullable();
             $table->string('status', 12)->default('scheduled'); // scheduled | completed | cancelled | no_show
@@ -332,7 +332,7 @@ return new class extends Migration
             $table->string('source', 40);  // verbal, web_form, whatsapp_message, import, instant_form
             $table->text('evidence')->nullable();
             $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('recorded_at');
+            $table->timestamp('recorded_at')->useCurrent();
             $table->timestamp('created_at')->useCurrent();
             $table->index(['contact_id', 'channel', 'recorded_at']);
         });
