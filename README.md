@@ -123,4 +123,5 @@ Argon2id passwords; session regenerated on login; HttpOnly/Secure/SameSite cooki
 - `docs/ASSUMPTIONS.md` — decisions made where the brief was open
 - `docs/AUTOMATION.md`, `docs/AUDIENCES.md` — rule engine; segments, eligibility and Meta Custom Audience uploads
 - `docs/RECIPES.md` — website/landing-page form endpoints, Zapier and Make recipes, webhook signature verification
+- `docs/DEPLOYMENT_CPANEL.md` — shared-hosting install (bundle with vendor/, cron-driven worker, document-root shim)
 - `docs/DEPLOYMENT.md`, `docs/REDIS.md`, `docs/SECURITY.md`, `docs/ACCEPTANCE.md` — operations, scale-out, security posture, verification record
