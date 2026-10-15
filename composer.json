@@ -16,7 +16,6 @@
         "ext-mbstring": "*",
         "ext-intl": "*",
         "ext-zip": "*",
-        "ext-sodium": "*",
         "laravel/framework": "^13.17",
         "phpoffice/phpspreadsheet": "^5.0",
         "giggsey/libphonenumber-for-php-lite": "^9.0",
