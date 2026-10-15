@@ -111,7 +111,7 @@ class Doctor extends Command
         $add('public_env', '.env outside web root', file_exists(public_path('.env')) ? 'fail' : 'ok', file_exists(public_path('.env')) ? 'public/.env exists!' : 'ok');
         $add('vendor_dev', 'Dev dependencies', class_exists(\PHPUnit\Framework\TestCase::class) && $prod ? 'warn' : 'ok', class_exists(\PHPUnit\Framework\TestCase::class) ? 'installed (use composer install --no-dev in production)' : 'not installed');
         $add('php', 'PHP version', version_compare(PHP_VERSION, '8.3.0', '>=') ? 'ok' : 'fail', PHP_VERSION);
-        foreach (['pdo', 'mbstring', 'intl', 'zip', 'gd', 'bcmath', 'openssl', 'curl', 'fileinfo'] as $ext) {
+        foreach (['pdo', 'mbstring', 'intl', 'zip', 'openssl', 'curl', 'fileinfo'] as $ext) {
             if (! extension_loaded($ext)) {
                 $add('ext_'.$ext, "PHP extension $ext", 'fail', 'missing');
             }
