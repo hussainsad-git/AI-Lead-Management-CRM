@@ -6,7 +6,7 @@ Shared hosting works for a sales team of a few people. The differences from a VP
 
 cPanel → **Select PHP Version** (or *MultiPHP Manager*):
 - PHP **8.3 or 8.4** must be selectable. 8.2 or lower → the app will not boot; ask the host or move hosts.
-- Extensions ticked: `pdo_mysql`, `mbstring`, `intl`, `zip`, `sodium`, `gd`, `bcmath`, `fileinfo`, `curl`, `openssl`, `xml`, `ctype`, `tokenizer`. (`intl` and `sodium` are the ones most often off.)
+- Extensions ticked: `pdo_mysql`, `mbstring`, `intl`, `zip`, `gd`, `bcmath`, `fileinfo`, `curl`, `openssl`, `xml`, `ctype`, `tokenizer`. (`intl` is the one most often off.)
 - *Options* tab: `memory_limit` ≥ 256M, `max_execution_time` ≥ 120, `upload_max_filesize`/`post_max_size` ≥ 32M (Excel imports).
 
 cPanel → **Cron Jobs** must exist. **Terminal** (or SSH access) is strongly preferred but not required; `MySQL Database Wizard` is required. MariaDB 10.6+ or MySQL 8 is fine.
