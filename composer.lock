@@ -7250,8 +7250,7 @@
         "ext-pdo": "*",
         "ext-mbstring": "*",
         "ext-intl": "*",
-        "ext-zip": "*",
-        "ext-sodium": "*"
+        "ext-zip": "*"
     },
     "platform-dev": [],
     "platform-overrides": {
